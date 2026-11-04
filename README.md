@@ -6,7 +6,7 @@ Production site: [quiz-projection-app2.web.app](https://quiz-projection-app2.web
 
 ## Current release
 
-Administrators sign in with Google through Firebase Authentication. The application calls the existing Firebase Access Manager `checkMyAccess` and `requestAppAccess` functions using the fixed Web App ID, then reads and writes only `/apps/quizProjectionApp2/users/{uid}/...`. Quiz state is synchronized in real time through Firestore after the canonical app-specific rule is approved and deployed.
+Administrators sign in with Google through Firebase Authentication. The application calls the existing Firebase Access Manager `checkMyAccess` and `requestAppAccess` functions using the fixed Web App ID, then reads and writes only `/apps/quizProjectionApp2/users/{uid}/...`. Quiz state is synchronized in real time through Firestore. Invigilators use independent, expiring Firebase custom-auth sessions created by app-specific callable Functions, so an administrator does not need to be signed in on the invigilator device.
 
 The canonical rule change is maintained and tested only in `jeevanvarghese579/school-softwares-firebase-shared-config`; this application repository never owns or deploys shared rules. See [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md).
 
@@ -15,7 +15,7 @@ The canonical rule change is maintained and tested only in `jeevanvarghese579/sc
 - Multiple independent quizzes with draft, live, paused, completed, and archived states
 - Team and student management with CSV import/export
 - Configurable questions and correct, incorrect, half, unanswered, and bounded custom scores
-- Team-restricted demo invigilator codes, expiry, revocation, and read-only access
+- Server-generated invigilator codes with independent login, team restrictions, expiry, revocation, and read-only access
 - Results table, CSV export, printing, corrections, resets, and audit history
 - Full-screen projector with stable team colors, tied rankings, reduced-motion support, animated score changes, and overflow standings
 - Responsive admin and mobile scoring interfaces
@@ -39,7 +39,7 @@ Open the local URL printed by Vite and sign in with an Access Manager-authorized
 npm run check
 ```
 
-This runs TypeScript, ESLint, Vitest, and the production Vite build. Tests never connect to production Firebase.
+This runs TypeScript, ESLint, frontend and Functions unit tests, and both production builds. Tests never connect to production Firebase.
 
 ## CSV format
 
@@ -58,14 +58,14 @@ Repeated team rows are merged into the same team during import.
 - Hosting site: `quiz-projection-app2`
 - Web App ID: `1:379503088311:web:ff8ed9b3c2540b9b133332`
 - Canonical app key: `quizProjectionApp2`
-- Proposed data root: `/apps/quizProjectionApp2/users/{ownerUid}/...`
+- Data root: `/apps/quizProjectionApp2/users/{ownerUid}/...`
 - Canonical rules repository: `jeevanvarghese579/school-softwares-firebase-shared-config`
 
-This repository deliberately contains no Firestore or Storage rules and no Admin SDK credentials. Google authentication alone must never grant administrator access. Production invigilator code redemption and score writes require the reviewed callable functions described in [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md).
+This repository deliberately contains no Firestore or Storage rules and no Admin SDK credentials. Google authentication alone never grants administrator access. Production invigilator code redemption and score writes use the deployed callable Functions described in [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md).
 
 ## Hosting deployment
 
-The only deployment script in this repository is scoped to this Hosting site:
+The Hosting deployment script is scoped to this Hosting site:
 
 ```bash
 npm run deploy:hosting

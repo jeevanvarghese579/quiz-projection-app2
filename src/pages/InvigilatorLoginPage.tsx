@@ -3,31 +3,29 @@ import { Link, useNavigate } from 'react-router-dom';
 import { KeyRound, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { useQuiz } from '@/contexts/QuizContext';
+import { redeemInvigilatorCode } from '@/firebase/invigilator';
 
 export function InvigilatorLoginPage() {
   const navigate = useNavigate();
-  const { quizzes } = useQuiz();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    const trimmed = code.trim().toUpperCase();
+  const handleLogin = async () => {
+    const trimmed = code.trim();
     if (!trimmed) {
       setError('Please enter a quiz access code.');
       return;
     }
-    const now = Date.now();
-    const quiz = quizzes.find((q) => q.invigilatorLoginEnabled && q.invigilatorAccess.some((a) =>
-      a.code.toUpperCase() === trimmed && !a.revoked && (!a.expiresAt || a.expiresAt > now)
-    ));
-    if (!quiz) {
-      setError('Invalid, expired, or revoked access code.');
-      return;
+    setLoading(true);
+    try {
+      const quizId = await redeemInvigilatorCode(trimmed);
+      navigate(`/invigilator/${quizId}`);
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : 'Invalid, expired, or revoked access code.');
+    } finally {
+      setLoading(false);
     }
-    const access = quiz.invigilatorAccess.find((a) => a.code.toUpperCase() === trimmed)!;
-    window.sessionStorage.setItem(`quizProjectionApp2.invigilator.${quiz.id}`, access.id);
-    navigate(`/invigilator/${quiz.id}`);
   };
 
   return (
@@ -51,11 +49,11 @@ export function InvigilatorLoginPage() {
           <div className="space-y-4">
             <Input
               label="Access Code"
-              placeholder="e.g. SCIENCE-4827"
+              placeholder="Paste the code from the administrator"
               value={code}
               onChange={(e) => { setCode(e.target.value); setError(''); }}
-              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-              className="text-center text-lg font-mono tracking-wider uppercase"
+              onKeyDown={(e) => e.key === 'Enter' && void handleLogin()}
+              className="text-center text-sm font-mono tracking-wide"
               autoFocus
             />
             {error && (
@@ -63,7 +61,7 @@ export function InvigilatorLoginPage() {
                 <AlertCircle className="w-4 h-4 shrink-0" /> {error}
               </div>
             )}
-            <Button onClick={handleLogin} size="lg" className="w-full">Enter Quiz</Button>
+            <Button onClick={() => void handleLogin()} disabled={loading} size="lg" className="w-full">{loading ? 'Checking code…' : 'Enter Quiz'}</Button>
           </div>
 
           <div className="mt-6 text-center">

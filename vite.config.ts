@@ -13,6 +13,9 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  test: {
+    include: ['src/**/*.test.ts'],
+  },
   build: {
     rollupOptions: {
       output: {
