@@ -21,6 +21,9 @@ test("legacy numeric and named codes remain compatible", () => {
   assert.doesNotThrow(() => validateCode("888888"));
   assert.doesNotThrow(() => validateCode("SCIENCE-4827"));
   assert.equal(isRoutedCode("888888"), false);
+  assert.throws(() => validateCode("SHORT"));
+  assert.throws(() => validateCode("SCIENCE CODE"));
+  assert.throws(() => validateCode("SCIENCE_2026"));
 });
 
 test("score calculation enforces question bounds", () => {

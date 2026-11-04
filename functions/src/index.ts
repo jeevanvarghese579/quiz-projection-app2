@@ -175,10 +175,15 @@ export const quizProjectionCreateCode = onCall(async (request) => {
   const data = request.data as { quizId?: unknown; label?: unknown; teamIds?: unknown; readOnly?: unknown; expiresAt?: unknown; code?: unknown };
   const quizId = cleanText(data?.quizId, 100);
   if (!quizId) throw new HttpsError("invalid-argument", "quizId is required.");
-  const code = generateCode(ownerUid);
+  const requestedCode = normalizeCode(data?.code);
+  const code = requestedCode || generateCode(ownerUid);
   try { validateCode(code); } catch (error) { throw new HttpsError("invalid-argument", error instanceof Error ? error.message : "Invalid access code."); }
   const codeHash = hashCode(code);
-  if ((await codeRef(ownerUid, codeHash).get()).exists) throw new HttpsError("already-exists", "Could not generate a unique code. Try again.");
+  if (requestedCode && isRoutedCode(code)) throw new HttpsError("invalid-argument", "Custom codes may contain only letters, numbers, and hyphens.");
+  if (requestedCode && await findLegacyCode(code)) throw new HttpsError("already-exists", "This custom code is already in use. Choose another code.");
+  if ((await codeRef(ownerUid, codeHash).get()).exists) {
+    throw new HttpsError("already-exists", requestedCode ? "This custom code is already in use. Choose another code." : "Could not generate a unique code. Try again.");
+  }
   const accessId = `inv_${randomUUID()}`;
   const expiresAt = data?.expiresAt === null || data?.expiresAt === undefined || data?.expiresAt === "" ? null : Number(data.expiresAt);
   if (expiresAt !== null && (!Number.isFinite(expiresAt) || expiresAt <= Date.now())) throw new HttpsError("invalid-argument", "Expiration must be in the future.");
