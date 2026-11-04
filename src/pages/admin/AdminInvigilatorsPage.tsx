@@ -29,6 +29,14 @@ export function AdminInvigilatorsPage() {
       setError('Custom codes must contain 6–48 letters, numbers, or hyphens.');
       return;
     }
+    const duplicateQuizzes = customCode
+      ? quizzes.filter((item) => item.invigilatorAccess.some((access) => access.code.trim().toUpperCase() === customCode))
+      : [];
+    if (duplicateQuizzes.length > 0) {
+      const quizNames = duplicateQuizzes.map((item) => `“${item.name}”`).join(', ');
+      setError(`Access code ${customCode} already exists for ${quizNames}. Each quiz must use a unique access code.`);
+      return;
+    }
     setBusy(true);
     setError('');
     try {
@@ -163,7 +171,7 @@ export function AdminInvigilatorsPage() {
             onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase().replace(/\s+/g, '') })}
             minLength={6}
             maxLength={48}
-            pattern="[A-Z0-9-]{6,48}"
+            pattern={'[A-Z0-9\\-]{6,48}'}
             autoComplete="off"
             spellCheck={false}
             hint="Use 6–48 letters, numbers, or hyphens. Leave blank to generate a secure code."

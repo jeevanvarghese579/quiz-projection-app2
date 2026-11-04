@@ -79,6 +79,22 @@
   background-size: 48px 48px, 48px 48px, auto, auto, auto;
 }
 
+.projector-scoreboard,
+.projector-scoreboard-content {
+  min-height: 100vh;
+}
+
+@media (min-width: 1024px) {
+  .projector-scoreboard {
+    height: var(--projector-height, 100vh);
+  }
+
+  .projector-scoreboard-content {
+    height: 100%;
+    min-height: 0;
+  }
+}
+
 @keyframes pulse-live {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(1.15); }

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Maximize, Minimize, Trophy, Radio, Settings2 } from 'lucide-react';
+import { GripHorizontal, Maximize, Minimize, Trophy, Radio, Settings2 } from 'lucide-react';
 import { useQuiz } from '@/contexts/QuizContext';
 import { formatMarks, getRankedTeams } from '@/utils/scoring';
 import { calculateProminentTeamCapacity } from '@/utils/projector';
@@ -14,6 +14,12 @@ const themeClasses: Record<string, string> = {
 };
 
 const speedMap: Record<string, number> = { instant: 0, fast: 0.28, normal: 0.5, slow: 0.8 };
+const HEIGHT_STORAGE_KEY = 'quizProjectionApp2.projectorHeight';
+
+function initialProjectorHeight(): number {
+  const savedHeight = Number(window.localStorage.getItem(HEIGHT_STORAGE_KEY));
+  return Number.isFinite(savedHeight) ? Math.max(window.innerHeight, savedHeight) : window.innerHeight;
+}
 
 export function ProjectorPage() {
   const { quizId } = useParams();
@@ -21,6 +27,7 @@ export function ProjectorPage() {
   const quiz = quizzes.find((item) => item.id === quizId);
   const [fullScreen, setFullScreen] = useState(false);
   const [screenCapacity, setScreenCapacity] = useState(5);
+  const [projectorHeight, setProjectorHeight] = useState(initialProjectorHeight);
   const standingsRef = useRef<HTMLElement>(null);
   const prefersReducedMotion = useReducedMotion();
 
@@ -28,6 +35,16 @@ export function ProjectorPage() {
     const onFullscreen = () => setFullScreen(Boolean(document.fullscreenElement));
     document.addEventListener('fullscreenchange', onFullscreen);
     return () => document.removeEventListener('fullscreenchange', onFullscreen);
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(HEIGHT_STORAGE_KEY, String(projectorHeight));
+  }, [projectorHeight]);
+
+  useEffect(() => {
+    const keepAtLeastOneScreenHigh = () => setProjectorHeight((height) => Math.max(window.innerHeight, height));
+    window.addEventListener('resize', keepAtLeastOneScreenHigh);
+    return () => window.removeEventListener('resize', keepAtLeastOneScreenHigh);
   }, []);
 
   const ranked = useMemo(() => quiz ? getRankedTeams(quiz) : [], [quiz]);
@@ -61,9 +78,42 @@ export function ProjectorPage() {
     else await document.documentElement.requestFullscreen();
   };
 
+  const resizeProjector = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    const startY = event.clientY;
+    const startHeight = projectorHeight;
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      setProjectorHeight(Math.max(window.innerHeight, startHeight + moveEvent.clientY - startY));
+    };
+    const stopResizing = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', stopResizing);
+      window.removeEventListener('pointercancel', stopResizing);
+    };
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', stopResizing);
+    window.addEventListener('pointercancel', stopResizing);
+  };
+
+  const resizeWithKeyboard = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setProjectorHeight((height) => height + 80);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setProjectorHeight((height) => Math.max(window.innerHeight, height - 80));
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      setProjectorHeight(window.innerHeight);
+    }
+  };
+
   return (
-    <div className={`min-h-screen text-white ${themeClasses[quiz.projector.theme]} overflow-hidden`}>
-      <div className="min-h-screen p-5 md:p-8 xl:p-10 flex flex-col">
+    <div
+      className={`projector-scoreboard text-white ${themeClasses[quiz.projector.theme]} overflow-hidden`}
+      style={{ '--projector-height': `${projectorHeight}px` } as CSSProperties}
+    >
+      <div className="projector-scoreboard-content relative p-5 pb-8 md:p-8 md:pb-10 xl:p-10 xl:pb-12 flex flex-col">
         <header className="flex items-start justify-between gap-4 mb-6 md:mb-8">
           <div className="flex items-center gap-4 min-w-0">
             <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-300 flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
@@ -162,6 +212,18 @@ export function ProjectorPage() {
           <span>{quiz.status === 'live' ? 'Scores update automatically' : `Quiz ${quiz.status}`}</span>
           <span className="flex items-center gap-1.5"><Radio className="w-3.5 h-3.5" /> Live scoreboard</span>
         </footer>
+
+        <button
+          type="button"
+          aria-label="Resize score screen height. Use the up and down arrow keys, or press Home to reset."
+          title="Drag to extend the score screen · Double-click to reset"
+          onPointerDown={resizeProjector}
+          onKeyDown={resizeWithKeyboard}
+          onDoubleClick={() => setProjectorHeight(window.innerHeight)}
+          className="absolute inset-x-0 bottom-0 hidden h-6 cursor-ns-resize touch-none items-center justify-center border-t border-white/10 bg-black/20 text-slate-500 transition-colors hover:bg-white/10 hover:text-slate-300 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-cyan-400 lg:flex"
+        >
+          <GripHorizontal className="h-4 w-7" />
+        </button>
       </div>
     </div>
   );

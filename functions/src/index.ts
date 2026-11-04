@@ -123,7 +123,7 @@ async function findLegacyCode(code: string): Promise<{ ownerUid: string; quizId:
       }
     }
   }
-  if (matches.length > 1) throw new HttpsError("failed-precondition", "This legacy code is not unique. Ask the administrator to create a new secure code.");
+  if (matches.length > 1) throw new HttpsError("failed-precondition", "This access code is assigned to more than one quiz. Ask the administrator to replace the duplicate code.");
   return matches[0] ?? null;
 }
 
