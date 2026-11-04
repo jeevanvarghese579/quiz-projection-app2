@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 
 export const firebaseConfig = {
@@ -16,7 +16,10 @@ export const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+// Quiz drafts contain optional fields (for example eventDate and institution).
+// Firestore rejects `undefined` by default, so omit those optional values while
+// preserving the rest of the document instead of failing the entire save.
+export const db = initializeFirestore(app, { ignoreUndefinedProperties: true });
 export const functions = getFunctions(app);
 
 if (typeof window !== 'undefined') {
