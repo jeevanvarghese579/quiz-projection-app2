@@ -1,4 +1,4 @@
-import { getApp, getApps, initializeApp } from 'firebase/app';
+import { initializeApp } from 'firebase/app';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
@@ -18,11 +18,6 @@ export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const functions = getFunctions(app);
-const invigilatorApp = getApps().some((item) => item.name === 'invigilator-session')
-  ? getApp('invigilator-session')
-  : initializeApp(firebaseConfig, 'invigilator-session');
-export const invigilatorAuth = getAuth(invigilatorApp);
-export const invigilatorFunctions = getFunctions(invigilatorApp);
 
 if (typeof window !== 'undefined') {
   void isSupported().then((supported) => {

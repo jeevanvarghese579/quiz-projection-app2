@@ -6,7 +6,7 @@ Production site: [quiz-projection-app2.web.app](https://quiz-projection-app2.web
 
 ## Current release
 
-Administrators sign in with Google through Firebase Authentication. The application calls the existing Firebase Access Manager `checkMyAccess` and `requestAppAccess` functions using the fixed Web App ID, then reads and writes only `/apps/quizProjectionApp2/users/{uid}/...`. Quiz state is synchronized in real time through Firestore. Invigilators use independent, expiring Firebase custom-auth sessions created by app-specific callable Functions, so an administrator does not need to be signed in on the invigilator device.
+Administrators sign in with Google through Firebase Authentication. The application calls the existing Firebase Access Manager `checkMyAccess` and `requestAppAccess` functions using the fixed Web App ID, then reads and writes only `/apps/quizProjectionApp2/users/{uid}/...`. Quiz state is synchronized in real time through Firestore. Invigilators use independent, expiring, high-entropy server sessions created by app-specific callable Functions, so an administrator does not need to be signed in on the invigilator device. Existing six-digit and named access codes remain supported.
 
 The canonical rule change is maintained and tested only in `jeevanvarghese579/school-softwares-firebase-shared-config`; this application repository never owns or deploys shared rules. See [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md).
 

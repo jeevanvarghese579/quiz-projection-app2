@@ -1,10 +1,9 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { getApps, initializeApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
 import { FieldValue, Timestamp, getFirestore, type DocumentData } from "firebase-admin/firestore";
 import { HttpsError, onCall, type CallableRequest } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2/options";
-import { computeMarks, generateCode, hashCode, normalizeCode, ownerUidFromCode, validateCode, type ScoreState } from "./domain.js";
+import { computeMarks, generateCode, hashCode, isRoutedCode, normalizeCode, ownerUidFromCode, validateCode, type ScoreState } from "./domain.js";
 
 if (!getApps().length) initializeApp();
 setGlobalOptions({ region: "us-central1", maxInstances: 10, timeoutSeconds: 60 });
@@ -108,6 +107,26 @@ function findAccess(quiz: QuizData, accessId: string): InvigilatorAccess {
   return access;
 }
 
+async function findLegacyCode(code: string): Promise<{ ownerUid: string; quizId: string; accessId: string } | null> {
+  const ownerRefs = await db.collection(`apps/${APP_KEY}/users`).listDocuments();
+  const matches: Array<{ ownerUid: string; quizId: string; accessId: string }> = [];
+  for (let offset = 0; offset < ownerRefs.length; offset += 100) {
+    const stateRefs = ownerRefs.slice(offset, offset + 100).map((owner) => stateRef(owner.id));
+    if (stateRefs.length === 0) continue;
+    const snapshots = await db.getAll(...stateRefs);
+    for (let index = 0; index < snapshots.length; index += 1) {
+      const ownerUid = ownerRefs[offset + index].id;
+      for (const quiz of asQuizzes(snapshots[index].data())) {
+        for (const access of quiz.invigilatorAccess || []) {
+          if (normalizeCode(access.code) === code) matches.push({ ownerUid, quizId: quiz.id, accessId: access.id });
+        }
+      }
+    }
+  }
+  if (matches.length > 1) throw new HttpsError("failed-precondition", "This legacy code is not unique. Ask the administrator to create a new secure code.");
+  return matches[0] ?? null;
+}
+
 function sanitizedQuiz(quiz: QuizData, access: InvigilatorAccess) {
   const allowed = access.teamIds === "all" ? null : new Set(access.teamIds);
   return {
@@ -127,17 +146,28 @@ function sanitizedQuiz(quiz: QuizData, access: InvigilatorAccess) {
 }
 
 async function requireSession(request: CallableRequest<unknown>) {
-  if (!request.auth) throw new HttpsError("unauthenticated", "Invigilator session is not signed in.");
-  const claim = request.auth.token.quizProjectionSession as { appKey?: string; ownerUid?: string; quizId?: string; accessId?: string; sessionId?: string } | undefined;
-  if (!claim || claim.appKey !== APP_KEY || !claim.ownerUid || !claim.quizId || !claim.accessId || !claim.sessionId) {
-    throw new HttpsError("permission-denied", "This account is not an invigilator session for this app.");
+  const sessionToken = cleanText((request.data as { sessionToken?: unknown })?.sessionToken, 1000);
+  const parts = sessionToken.split('.');
+  if (parts.length !== 3 || parts[0] !== 'QPS' || !parts[1] || !/^[A-Za-z0-9_-]{32,}$/.test(parts[2])) {
+    throw new HttpsError("unauthenticated", "Invigilator session is not signed in.");
   }
-  const session = await sessionRef(claim.ownerUid, claim.sessionId).get();
+  let routing: { ownerUid?: unknown; sessionId?: unknown };
+  try { routing = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as { ownerUid?: unknown; sessionId?: unknown }; }
+  catch { throw new HttpsError("unauthenticated", "Invigilator session token is invalid."); }
+  const ownerUid = cleanText(routing.ownerUid, 128);
+  const sessionId = cleanText(routing.sessionId, 100);
+  if (!ownerUid || ownerUid.includes('/') || !sessionId || sessionId.includes('/')) throw new HttpsError("unauthenticated", "Invigilator session token is invalid.");
+  const session = await sessionRef(ownerUid, sessionId).get();
   const sessionData = session.data();
-  if (!session.exists || sessionData?.authUid !== request.auth.uid || sessionData?.revoked === true) throw new HttpsError("permission-denied", "Invigilator session is invalid or revoked.");
+  if (!session.exists || sessionData?.tokenHash !== hashCode(sessionToken) || sessionData?.revoked === true) throw new HttpsError("permission-denied", "Invigilator session is invalid or revoked.");
   const expiresAt = expirationMillis(sessionData?.expiresAt);
   if (expiresAt === null || expiresAt <= Date.now()) throw new HttpsError("permission-denied", "Invigilator session has expired.");
-  return { ownerUid: claim.ownerUid, quizId: claim.quizId, accessId: claim.accessId, sessionId: claim.sessionId };
+  return {
+    ownerUid,
+    sessionId,
+    quizId: cleanText(sessionData?.quizId, 100),
+    accessId: cleanText(sessionData?.accessId, 120),
+  };
 }
 
 export const quizProjectionCreateCode = onCall(async (request) => {
@@ -202,17 +232,26 @@ export const quizProjectionRevokeSession = onCall(async (request) => {
   return { revoked: true };
 });
 
-export const quizProjectionRedeemCode = onCall(async (request) => {
+export const quizProjectionRedeemCode = onCall({ maxInstances: 2 }, async (request) => {
   rateLimitRedemption(request);
   const code = normalizeCode((request.data as { code?: unknown })?.code);
   try { validateCode(code); } catch { throw new HttpsError("invalid-argument", "Enter a valid access code."); }
   const codeHash = hashCode(code);
-  const ownerUid = ownerUidFromCode(code);
-  const match = await codeRef(ownerUid, codeHash).get();
-  if (!match.exists) throw new HttpsError("permission-denied", "Invalid, expired, or revoked access code.");
-  const lookup = match.data() || {};
-  const quizId = cleanText(lookup.quizId, 100);
-  const accessId = cleanText(lookup.accessId, 120);
+  let ownerUid: string;
+  let quizId: string;
+  let accessId: string;
+  if (isRoutedCode(code)) {
+    ownerUid = ownerUidFromCode(code);
+    const match = await codeRef(ownerUid, codeHash).get();
+    if (!match.exists) throw new HttpsError("permission-denied", "Invalid, expired, or revoked access code.");
+    const lookup = match.data() || {};
+    quizId = cleanText(lookup.quizId, 100);
+    accessId = cleanText(lookup.accessId, 120);
+  } else {
+    const legacy = await findLegacyCode(code);
+    if (!legacy) throw new HttpsError("permission-denied", "Invalid, expired, or revoked access code.");
+    ({ ownerUid, quizId, accessId } = legacy);
+  }
   const state = await stateRef(ownerUid).get();
   const quizzes = asQuizzes(state.data());
   const quiz = findQuiz(quizzes, quizId);
@@ -220,14 +259,12 @@ export const quizProjectionRedeemCode = onCall(async (request) => {
   if (hashCode(access.code) !== codeHash) throw new HttpsError("permission-denied", "Invalid access code.");
 
   const sessionId = `sess_${randomUUID()}`;
-  const authUid = `quizinv_${randomBytes(18).toString("hex")}`;
+  const routing = Buffer.from(JSON.stringify({ ownerUid, sessionId }), 'utf8').toString('base64url');
+  const sessionToken = `QPS.${routing}.${randomBytes(32).toString('base64url')}`;
   const sessionExpiresAt = Math.min(access.expiresAt ?? Number.POSITIVE_INFINITY, Date.now() + SESSION_HOURS * 60 * 60 * 1000);
   await sessionRef(ownerUid, sessionId).set({
-    appKey: APP_KEY, ownerUid, quizId, accessId, authUid, revoked: false,
+    appKey: APP_KEY, ownerUid, quizId, accessId, tokenHash: hashCode(sessionToken), revoked: false,
     createdAt: FieldValue.serverTimestamp(), expiresAt: Timestamp.fromMillis(sessionExpiresAt),
-  });
-  const token = await getAuth().createCustomToken(authUid, {
-    quizProjectionSession: { appKey: APP_KEY, ownerUid, quizId, accessId, sessionId },
   });
   await db.runTransaction(async (transaction) => {
     const ref = stateRef(ownerUid);
@@ -238,7 +275,7 @@ export const quizProjectionRedeemCode = onCall(async (request) => {
     freshQuiz.invigilatorAccess = (freshQuiz.invigilatorAccess || []).map((entry) => entry.id === accessId ? { ...entry, lastUsedAt: Date.now() } : entry);
     transaction.set(ref, { ...fresh.data(), quizzes: freshQuizzes, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   });
-  return { token, quizId, expiresAt: sessionExpiresAt };
+  return { sessionToken, quizId, expiresAt: sessionExpiresAt };
 });
 
 export const quizProjectionGetSessionState = onCall(async (request) => {

@@ -1,17 +1,26 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { computeMarks, generateCode, hashCode, normalizeCode, ownerUidFromCode, validateCode } from "./domain.js";
+import { computeMarks, generateCode, hashCode, isRoutedCode, normalizeCode, ownerUidFromCode, validateCode } from "./domain.js";
 
 test("generated codes are normalized, valid, and high entropy length", () => {
   const code = generateCode("FirebaseUid_AbC123");
   assert.match(code, /^QP2\.FirebaseUid_AbC123\.[A-Z0-9]{12}$/);
   assert.doesNotThrow(() => validateCode(code));
   assert.equal(ownerUidFromCode(code), "FirebaseUid_AbC123");
+  assert.equal(isRoutedCode(code), true);
 });
 
 test("normalization and hashing are stable", () => {
   assert.equal(normalizeCode(" QP2.FirebaseUid.ABCD1234EFGH "), "QP2.FirebaseUid.ABCD1234EFGH");
   assert.equal(hashCode("QP2.FirebaseUid.ABCD1234EFGH"), hashCode(" QP2.FirebaseUid.ABCD1234EFGH "));
+});
+
+test("legacy numeric and named codes remain compatible", () => {
+  assert.equal(normalizeCode(" 888888 "), "888888");
+  assert.equal(normalizeCode(" science-4827 "), "SCIENCE-4827");
+  assert.doesNotThrow(() => validateCode("888888"));
+  assert.doesNotThrow(() => validateCode("SCIENCE-4827"));
+  assert.equal(isRoutedCode("888888"), false);
 });
 
 test("score calculation enforces question bounds", () => {

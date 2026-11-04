@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { onAuthStateChanged } from 'firebase/auth';
 import { Check, X, Minus, LogOut, ShieldCheck, Save, Trophy, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
-import { invigilatorAuth } from '@/firebase/client';
 import { getInvigilatorSessionState, signOutInvigilator, submitInvigilatorScore, type SessionQuiz } from '@/firebase/invigilator';
 import { getScoreEntry, formatMarks, getTeamTotal } from '@/utils/scoring';
 import type { ScoreState } from '@/types';
@@ -44,18 +42,10 @@ export function InvigilatorPage() {
         if (!cancelled) setLoading(false);
       }
     };
-    const unsubscribe = onAuthStateChanged(invigilatorAuth, (user) => {
-      if (!user) {
-        setLoading(false);
-        setError('This invigilator session is not signed in or has expired.');
-        return;
-      }
-      void load(true);
-      refreshTimer = window.setInterval(() => void load(false), 10_000);
-    });
+    void load(true);
+    refreshTimer = window.setInterval(() => void load(false), 10_000);
     return () => {
       cancelled = true;
-      unsubscribe();
       window.clearInterval(refreshTimer);
     };
   }, [quizId]);
