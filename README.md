@@ -6,9 +6,9 @@ Production site: [quiz-projection-app2.web.app](https://quiz-projection-app2.web
 
 ## Current release
 
-This release is a complete, browser-local demonstration of the administrator, invigilator, results, CSV, audit-log, and animated-projector workflows. Demo data persists in the browser and changes synchronize across open tabs on the same origin. The interface labels this mode clearly.
+Administrators sign in with Google through Firebase Authentication. The application calls the existing Firebase Access Manager `checkMyAccess` and `requestAppAccess` functions using the fixed Web App ID, then reads and writes only `/apps/quizProjectionApp2/users/{uid}/...`. Quiz state is synchronized in real time through Firestore after the canonical app-specific rule is approved and deployed.
 
-Production Firestore scoring is intentionally disabled. The shared Firebase project's canonical rules do not yet register the proposed `quizProjectionApp2` app key, and the required Access Manager and callable-function changes have not been approved. See [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md) for the verified state and rollout plan.
+The canonical rule change is maintained and tested only in `jeevanvarghese579/school-softwares-firebase-shared-config`; this application repository never owns or deploys shared rules. See [SECURITY_ARCHITECTURE.md](SECURITY_ARCHITECTURE.md).
 
 ## Features
 
@@ -31,7 +31,7 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite. Use demo invigilator code `SCIENCE-4827`.
+Open the local URL printed by Vite and sign in with an Access Manager-authorized Google account.
 
 ## Quality checks
 
@@ -57,7 +57,7 @@ Repeated team rows are merged into the same team during import.
 - Project ID: `inter-level-progress-manager`
 - Hosting site: `quiz-projection-app2`
 - Web App ID: `1:379503088311:web:ff8ed9b3c2540b9b133332`
-- Proposed app key: `quizProjectionApp2` (not yet registered or approved)
+- Canonical app key: `quizProjectionApp2`
 - Proposed data root: `/apps/quizProjectionApp2/users/{ownerUid}/...`
 - Canonical rules repository: `jeevanvarghese579/school-softwares-firebase-shared-config`
 

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Maximize, Minimize, Trophy, Radio, Settings2 } from 'lucide-react';
 import { useQuiz } from '@/contexts/QuizContext';
 import { formatMarks, getRankedTeams } from '@/utils/scoring';
+import { calculateProminentTeamCapacity } from '@/utils/projector';
 
 const themeClasses: Record<string, string> = {
   midnight: 'projector-bg projector-grid',
@@ -19,6 +20,8 @@ export function ProjectorPage() {
   const { quizzes } = useQuiz();
   const quiz = quizzes.find((item) => item.id === quizId);
   const [fullScreen, setFullScreen] = useState(false);
+  const [screenCapacity, setScreenCapacity] = useState(5);
+  const standingsRef = useRef<HTMLElement>(null);
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
@@ -28,10 +31,29 @@ export function ProjectorPage() {
   }, []);
 
   const ranked = useMemo(() => quiz ? getRankedTeams(quiz) : [], [quiz]);
+
+  useEffect(() => {
+    const section = standingsRef.current;
+    if (!section) return;
+    const updateCapacity = () => {
+      const availableHeight = section.getBoundingClientRect().height;
+      setScreenCapacity(calculateProminentTeamCapacity(window.innerWidth, availableHeight, ranked.length));
+    };
+    updateCapacity();
+    const observer = new ResizeObserver(updateCapacity);
+    observer.observe(section);
+    window.addEventListener('resize', updateCapacity);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateCapacity);
+    };
+  }, [ranked.length]);
+
   if (!quiz) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Quiz not found.</div>;
 
-  const prominent = ranked.slice(0, quiz.projector.prominentTeamCount);
-  const overflow = ranked.slice(quiz.projector.prominentTeamCount);
+  const prominentCount = Math.min(ranked.length, screenCapacity);
+  const prominent = ranked.slice(0, prominentCount);
+  const overflow = ranked.slice(prominentCount);
   const duration = prefersReducedMotion ? 0 : speedMap[quiz.projector.animationSpeed];
 
   const toggleFullScreen = async () => {
@@ -67,7 +89,7 @@ export function ProjectorPage() {
         </header>
 
         <main className="flex-1 grid lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.38fr)] gap-5 md:gap-7 min-h-0">
-          <section className="min-w-0 flex flex-col">
+          <section ref={standingsRef} className="min-w-0 flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Championship standings</p>
               <p className="text-xs text-slate-500">{ranked.length} teams competing</p>

@@ -2,13 +2,13 @@
 
 ## Verified state
 
-The canonical shared-rules repository was inspected on 4 November 2026. It uses an `authorizedUser(appId, uid)` helper backed by `/accessUsers/{uid}` and `/appRegistry/{appId}`, and owner-scoped rules below `/apps/{appId}/users/{uid}/...`. The proposed `quizProjectionApp2` key is not present in the current canonical rules. Browser clients cannot read or write the Access Manager control-plane collections.
+The canonical shared-rules repository was inspected on 4 November 2026. It uses `hasCanonicalAppAccess(uid, appId)` backed by server-only `/accessUsers/{uid}` and `/appRegistry/{appId}` control-plane documents. Browser clients cannot read or write those collections.
 
-Consequently, this repository intentionally ships the safe demo implementation only. The deployed demo stores fictional quiz state in browser `localStorage` and synchronizes open same-origin tabs through storage events. It does not write to Firestore or claim production authorization.
+The application uses Google Firebase Authentication, calls the deployed Access Manager functions with Web App ID `1:379503088311:web:ff8ed9b3c2540b9b133332`, and stores administrator quiz state only at `/apps/quizProjectionApp2/users/{uid}/data/state`. The app-specific canonical rule remains pending explicit deployment approval.
 
 ## Proposed production model
 
-- App key: `quizProjectionApp2` (pending registration and approval).
+- App key: `quizProjectionApp2`.
 - Owner data root: `/apps/quizProjectionApp2/users/{ownerUid}/quizzes/{quizId}`.
 - Child collections: `teams`, `questions`, `scores`, `leaderboard`, `invigilatorAccess`, `invigilatorSessions`, and `auditLogs`.
 - Administrators authenticate with Google, then a trusted callable verifies Access Manager entitlement, active app registration, expiration, and quiz ownership.

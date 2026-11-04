@@ -1,7 +1,9 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import type { Quiz, ScoreEntry, AuditLogEntry, ProjectorSettings, Team, Question, InvigilatorAccess } from '@/types';
-import { DEMO_QUIZ } from '@/data/demoData';
 import { computeMarks, getTeamTotal, getRankedTeams, uid } from '@/utils/scoring';
+import { APP_KEY, db } from '@/firebase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface QuizContextValue {
   quizzes: Quiz[];
@@ -41,52 +43,49 @@ interface QuizContextValue {
 
 const QuizContext = createContext<QuizContextValue | null>(null);
 
-const QUIZZES_STORAGE_KEY = 'quizProjectionApp2.demo.quizzes.v1';
-const ACTIVE_QUIZ_STORAGE_KEY = 'quizProjectionApp2.demo.activeQuiz.v1';
-
-function loadStoredQuizzes(): Quiz[] {
-  if (typeof window === 'undefined') return [DEMO_QUIZ];
-  try {
-    const stored = window.localStorage.getItem(QUIZZES_STORAGE_KEY);
-    if (!stored) return [DEMO_QUIZ];
-    const value = JSON.parse(stored) as unknown;
-    return Array.isArray(value) ? value as Quiz[] : [DEMO_QUIZ];
-  } catch {
-    return [DEMO_QUIZ];
-  }
-}
-
 export function QuizProvider({ children }: { children: ReactNode }) {
-  const [quizzes, setQuizzes] = useState<Quiz[]>(loadStoredQuizzes);
-  const [activeQuizId, setActiveQuizId] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return DEMO_QUIZ.id;
-    return window.localStorage.getItem(ACTIVE_QUIZ_STORAGE_KEY) ?? DEMO_QUIZ.id;
-  });
+  const { user, accessState } = useAuth();
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const lastRemotePayload = useRef('');
 
   useEffect(() => {
-    window.localStorage.setItem(QUIZZES_STORAGE_KEY, JSON.stringify(quizzes));
-  }, [quizzes]);
+    setHydrated(false);
+    lastRemotePayload.current = '';
+    if (!user || accessState !== 'authorized') {
+      setQuizzes([]);
+      setActiveQuizId(null);
+      return;
+    }
+
+    const stateRef = doc(db, 'apps', APP_KEY, 'users', user.uid, 'data', 'state');
+    return onSnapshot(stateRef, (snapshot) => {
+      const data = snapshot.data();
+      const nextQuizzes = Array.isArray(data?.quizzes) ? data.quizzes as Quiz[] : [];
+      const nextActiveQuizId = typeof data?.activeQuizId === 'string' ? data.activeQuizId : null;
+      lastRemotePayload.current = JSON.stringify({ quizzes: nextQuizzes, activeQuizId: nextActiveQuizId });
+      setQuizzes(nextQuizzes);
+      setActiveQuizId(nextActiveQuizId);
+      setHydrated(true);
+    }, () => {
+      setHydrated(false);
+    });
+  }, [accessState, user]);
 
   useEffect(() => {
-    if (activeQuizId) window.localStorage.setItem(ACTIVE_QUIZ_STORAGE_KEY, activeQuizId);
-    else window.localStorage.removeItem(ACTIVE_QUIZ_STORAGE_KEY);
-  }, [activeQuizId]);
-
-  useEffect(() => {
-    const syncDemoData = (event: StorageEvent) => {
-      if (event.key === QUIZZES_STORAGE_KEY && event.newValue) {
-        try {
-          const next = JSON.parse(event.newValue) as unknown;
-          if (Array.isArray(next)) setQuizzes(next as Quiz[]);
-        } catch {
-          // Ignore malformed storage written by another tab.
-        }
-      }
-      if (event.key === ACTIVE_QUIZ_STORAGE_KEY) setActiveQuizId(event.newValue);
-    };
-    window.addEventListener('storage', syncDemoData);
-    return () => window.removeEventListener('storage', syncDemoData);
-  }, []);
+    if (!user || accessState !== 'authorized' || !hydrated) return;
+    const payload = JSON.stringify({ quizzes, activeQuizId });
+    if (payload === lastRemotePayload.current) return;
+    const timer = window.setTimeout(() => {
+      lastRemotePayload.current = payload;
+      const stateRef = doc(db, 'apps', APP_KEY, 'users', user.uid, 'data', 'state');
+      void setDoc(stateRef, { quizzes, activeQuizId, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {
+        lastRemotePayload.current = '';
+      });
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [accessState, activeQuizId, hydrated, quizzes, user]);
 
   const activeQuiz = quizzes.find((q) => q.id === activeQuizId) ?? null;
 

@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { QuizProvider } from '@/contexts/QuizContext';
+import { AuthProvider } from '@/contexts/AuthContext';
 import { LandingPage } from '@/pages/LandingPage';
 import { AdminLoginPage } from '@/pages/AdminLoginPage';
 import { InvigilatorLoginPage } from '@/pages/InvigilatorLoginPage';
@@ -19,8 +20,9 @@ import { ProjectorPage } from '@/pages/ProjectorPage';
 
 export default function App() {
   return (
-    <QuizProvider>
-      <BrowserRouter>
+    <AuthProvider>
+      <QuizProvider>
+        <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/admin/login" element={<AdminLoginPage />} />
@@ -41,7 +43,8 @@ export default function App() {
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
-    </QuizProvider>
+        </BrowserRouter>
+      </QuizProvider>
+    </AuthProvider>
   );
 }

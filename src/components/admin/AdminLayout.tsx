@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useQuiz } from '@/contexts/QuizContext';
 import { Badge } from '@/components/ui/Badge';
+import { useAuth } from '@/contexts/AuthContext';
 
 const NAV_ITEMS = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -32,10 +33,14 @@ export function AdminLayout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { quizzes, activeQuizId, activeQuiz, setActiveQuizId } = useQuiz();
+  const { user, accessState, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [quizDropdown, setQuizDropdown] = useState(false);
 
-  if (window.sessionStorage.getItem('quizProjectionApp2.demoAdmin') !== 'true') {
+  if (accessState === 'loading' || accessState === 'checking') {
+    return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Checking Firebase access…</div>;
+  }
+  if (!user || accessState !== 'authorized') {
     return <Navigate to="/admin/login" replace />;
   }
 
@@ -140,7 +145,7 @@ export function AdminLayout() {
               </Link>
             )}
             <button
-              onClick={() => { window.sessionStorage.removeItem('quizProjectionApp2.demoAdmin'); navigate('/'); }}
+              onClick={() => { void signOut().then(() => navigate('/')); }}
               className="mt-2 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors"
             >
               <LogOut className="w-4.5 h-4.5" /> Sign out

@@ -91,8 +91,8 @@ export function AdminSettingsPage() {
                 <option value="normal">Normal</option>
                 <option value="slow">Slow</option>
               </Select>
-              <Input label="Prominent Teams (main panel)" type="number" min="1" max="20" value={projector.prominentTeamCount} onChange={(e) => setProjector({ ...projector, prominentTeamCount: Math.max(1, Math.min(20, parseInt(e.target.value) || 5)) })} />
             </div>
+            <p className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3 text-sm text-blue-700">The projector now fills the main panel automatically with as many team cards as the current screen height allows. Remaining teams move to the right-side standings panel.</p>
             <div className="space-y-3 pt-2">
               <Toggle label="Show Ranks" checked={projector.showRanks} onChange={(v) => setProjector({ ...projector, showRanks: v })} />
               <Toggle label="Show Scores" checked={projector.showScores} onChange={(v) => setProjector({ ...projector, showScores: v })} />

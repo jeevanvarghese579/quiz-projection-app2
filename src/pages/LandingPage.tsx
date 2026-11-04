@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Trophy, ShieldCheck, KeyRound, ArrowRight, Sparkles } from 'lucide-react';
+import { Trophy, ShieldCheck, KeyRound, ArrowRight, Sparkles, Cloud } from 'lucide-react';
 
 export function LandingPage() {
   return (
@@ -57,9 +57,9 @@ export function LandingPage() {
             </Link>
           </div>
 
-          <div className="mt-10 flex items-center justify-center gap-6 text-slate-500 text-xs">
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 animate-live" /> Demo Mode</span>
-            <span>Not live Firebase data</span>
+          <div className="mt-10 flex items-center justify-center gap-2 text-slate-400 text-xs">
+            <Cloud className="w-3.5 h-3.5" />
+            <span>Protected by Firebase Authentication and Access Manager</span>
           </div>
         </div>
       </main>

@@ -22,7 +22,7 @@ export function InvigilatorLoginPage() {
       a.code.toUpperCase() === trimmed && !a.revoked && (!a.expiresAt || a.expiresAt > now)
     ));
     if (!quiz) {
-      setError('Invalid or revoked access code. Try SCIENCE-4827 for the demo.');
+      setError('Invalid, expired, or revoked access code.');
       return;
     }
     const access = quiz.invigilatorAccess.find((a) => a.code.toUpperCase() === trimmed)!;
@@ -64,10 +64,6 @@ export function InvigilatorLoginPage() {
               </div>
             )}
             <Button onClick={handleLogin} size="lg" className="w-full">Enter Quiz</Button>
-          </div>
-
-          <div className="mt-6 p-4 rounded-xl bg-amber-500/10 border border-amber-400/30 text-amber-300 text-xs text-center">
-            Demo code: <span className="font-mono font-bold">SCIENCE-4827</span> — No account needed.
           </div>
 
           <div className="mt-6 text-center">

@@ -67,6 +67,18 @@
   background-size: 48px 48px;
 }
 
+/* Preserve the dark gradients when both projector utility classes are used. */
+.projector-bg.projector-grid {
+  background-color: #050914;
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.045) 1px, transparent 1px),
+    radial-gradient(ellipse at top, rgba(30, 58, 138, 0.32), transparent 55%),
+    radial-gradient(ellipse at bottom, rgba(15, 23, 42, 0.72), transparent 70%),
+    linear-gradient(180deg, #0b1120 0%, #050914 100%);
+  background-size: 48px 48px, 48px 48px, auto, auto, auto;
+}
+
 @keyframes pulse-live {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(1.15); }

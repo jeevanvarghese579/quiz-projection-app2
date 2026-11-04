@@ -27,4 +27,4 @@ if (typeof window !== 'undefined') {
 
 export const FIREBASE_PROJECT_ID = firebaseConfig.projectId;
 export const FIREBASE_WEB_APP_ID = firebaseConfig.appId;
-export const PROPOSED_APP_KEY = 'quizProjectionApp2';
+export const APP_KEY = 'quizProjectionApp2';
