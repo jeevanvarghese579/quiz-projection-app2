@@ -24,6 +24,8 @@ function quizFixture(): Quiz {
     ],
     invigilatorAccess: [],
     auditLogs: [],
+    negativeMarkingEnabled: false,
+    negativeMarkingPercentage: 25,
     invigilatorLoginEnabled: true,
     createdAt: 1,
     projector: {
@@ -40,6 +42,12 @@ describe('computeMarks', () => {
     expect(computeMarks(question, 'incorrect')).toBe(0);
     expect(computeMarks(question, 'half')).toBe(2.5);
     expect(computeMarks(question, 'unanswered')).toBeNull();
+  });
+
+  it('applies the configured percentage only when negative marking is enabled', () => {
+    expect(computeMarks(question, 'incorrect', undefined, { enabled: false, percentage: 25 })).toBe(0);
+    expect(computeMarks(question, 'incorrect', undefined, { enabled: true, percentage: 25 })).toBe(-1.25);
+    expect(computeMarks({ ...question, maxMarks: 3 }, 'incorrect', undefined, { enabled: true, percentage: 33 })).toBe(-0.99);
   });
 
   it('rounds and bounds custom marks', () => {

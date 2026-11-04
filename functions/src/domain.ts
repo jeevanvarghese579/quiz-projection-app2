@@ -42,11 +42,15 @@ export function isRoutedCode(code: string): boolean {
   return code.startsWith('QP2.');
 }
 
-export function computeMarks(question: QuestionLike, state: ScoreState, customValue?: number): number | null {
+export function computeMarks(question: QuestionLike, state: ScoreState, customValue?: number, negativeMarkingPercentage = 0): number | null {
   const max = Number(question.maxMarks);
   if (!Number.isFinite(max) || max < 0) throw new Error("Question maximum marks are invalid.");
   if (state === "correct") return max;
-  if (state === "incorrect") return -Math.abs(max);
+  if (state === "incorrect") {
+    const percentage = Math.min(100, Math.max(0, Number(negativeMarkingPercentage) || 0));
+    if (percentage === 0) return 0;
+    return Math.round((-Math.abs(max) * percentage / 100) * 100) / 100;
+  }
   if (state === "half") return max / 2;
   if (state === "unanswered") return null;
   if (!Number.isFinite(customValue) || Number(customValue) < -Math.abs(max) || Number(customValue) > max) {

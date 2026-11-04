@@ -131,6 +131,8 @@ export function createDemoQuiz(): Quiz {
       },
     ],
     auditLogs: [],
+    negativeMarkingEnabled: false,
+    negativeMarkingPercentage: 25,
     projector: {
       title: 'INTER-SCHOOL SCIENCE QUIZ 2026',
       subtitle: 'LIVE CHAMPIONSHIP LEADERBOARD',

@@ -47,10 +47,20 @@ export function getRankedTeams(quiz: Quiz): RankedTeam[] {
   });
 }
 
-export function computeMarks(question: Question, state: ScoreEntry['state'], customValue?: number): number | null {
+export interface NegativeMarkingPolicy {
+  enabled: boolean;
+  percentage: number;
+}
+
+export function computeMarks(question: Question, state: ScoreEntry['state'], customValue?: number, negativeMarking?: NegativeMarkingPolicy): number | null {
   switch (state) {
     case 'correct': return question.maxMarks;
-    case 'incorrect': return 0;
+    case 'incorrect': {
+      if (!negativeMarking?.enabled) return 0;
+      const percentage = Math.min(100, Math.max(0, Number(negativeMarking.percentage) || 0));
+      if (percentage === 0) return 0;
+      return Math.round((-Math.abs(question.maxMarks) * percentage / 100) * 100) / 100;
+    }
     case 'half': return question.maxMarks / 2;
     case 'unanswered': return null;
     case 'custom': {

@@ -85,6 +85,8 @@ export interface Quiz {
   invigilatorAccess: InvigilatorAccess[];
   auditLogs: AuditLogEntry[];
   projector: ProjectorSettings;
+  negativeMarkingEnabled: boolean;
+  negativeMarkingPercentage: number;
   invigilatorLoginEnabled: boolean;
   createdAt: number;
 }

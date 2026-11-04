@@ -29,7 +29,9 @@ test("legacy numeric and named codes remain compatible", () => {
 test("score calculation enforces question bounds", () => {
   const question = { id: "q1", maxMarks: 10 };
   assert.equal(computeMarks(question, "correct"), 10);
-  assert.equal(computeMarks(question, "incorrect"), -10);
+  assert.equal(computeMarks(question, "incorrect"), 0);
+  assert.equal(computeMarks(question, "incorrect", undefined, 25), -2.5);
+  assert.equal(computeMarks({ id: "q2", maxMarks: 3 }, "incorrect", undefined, 33), -0.99);
   assert.equal(computeMarks(question, "half"), 5);
   assert.equal(computeMarks(question, "unanswered"), null);
   assert.equal(computeMarks(question, "custom", 7.5), 7.5);

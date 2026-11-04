@@ -35,6 +35,8 @@ interface QuizData extends DocumentData {
   scores: Array<{ teamId: string; questionId: string; [key: string]: unknown }>;
   invigilatorAccess: InvigilatorAccess[];
   auditLogs: unknown[];
+  negativeMarkingEnabled?: boolean;
+  negativeMarkingPercentage?: number;
   invigilatorLoginEnabled: boolean;
 }
 
@@ -313,7 +315,14 @@ export const quizProjectionSubmitScore = onCall(async (request) => {
     const question = (quiz.questions || []).find((item) => item.id === questionId);
     if (!question || question.active === false) throw new HttpsError("not-found", "Question is not active.");
     let marks: number | null;
-    try { marks = computeMarks(question, scoreState, data?.customValue === undefined ? undefined : Number(data.customValue)); }
+    try {
+      marks = computeMarks(
+        question,
+        scoreState,
+        data?.customValue === undefined ? undefined : Number(data.customValue),
+        quiz.negativeMarkingEnabled === true ? Number(quiz.negativeMarkingPercentage) || 0 : 0,
+      );
+    }
     catch (error) { throw new HttpsError("invalid-argument", error instanceof Error ? error.message : "Invalid marks."); }
     const scoreIndex = (quiz.scores || []).findIndex((item) => item.teamId === teamId && item.questionId === questionId);
     const previous = scoreIndex >= 0 ? quiz.scores[scoreIndex] : undefined;

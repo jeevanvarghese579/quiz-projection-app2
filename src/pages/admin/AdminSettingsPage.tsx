@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Save, Settings2, Monitor } from 'lucide-react';
+import { Save, Settings2, Monitor, Percent } from 'lucide-react';
 import { useQuiz } from '@/contexts/QuizContext';
 import { Card, CardHeader, CardTitle, CardBody } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -9,7 +9,7 @@ import { PageHeader } from '@/components/admin/AdminLayout';
 
 export function AdminSettingsPage() {
   const { quizId } = useParams();
-  const { quizzes, updateQuiz, updateProjectorSettings, setQuizStatus } = useQuiz();
+  const { quizzes, updateQuiz, updateProjectorSettings, updateScoringSettings, setQuizStatus } = useQuiz();
   const quiz = quizzes.find((q) => q.id === quizId);
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState(() => ({
@@ -20,6 +20,10 @@ export function AdminSettingsPage() {
     title: '', subtitle: '', institution: '', prominentTeamCount: 5, animationSpeed: 'normal' as const,
     showRanks: true, showScores: true, autoScrollOverflow: true, theme: 'midnight' as const,
   });
+  const [scoring, setScoring] = useState(() => ({
+    negativeMarkingEnabled: quiz?.negativeMarkingEnabled === true,
+    negativeMarkingPercentage: quiz?.negativeMarkingPercentage ?? 25,
+  }));
 
   if (!quiz) return <p>Quiz not found.</p>;
 
@@ -37,6 +41,14 @@ export function AdminSettingsPage() {
 
   const handleSaveProjector = () => {
     updateProjectorSettings(quiz.id, projector);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleSaveScoring = () => {
+    const percentage = Math.min(100, Math.max(1, Number(scoring.negativeMarkingPercentage) || 1));
+    setScoring({ ...scoring, negativeMarkingPercentage: percentage });
+    updateScoringSettings(quiz.id, scoring.negativeMarkingEnabled, percentage);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -66,6 +78,41 @@ export function AdminSettingsPage() {
             </div>
             <div className="flex items-center gap-2 pt-2">
               <Button onClick={handleSaveQuiz}><Save className="w-4 h-4" /> {saved ? 'Saved!' : 'Save Details'}</Button>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Percent className="w-5 h-5 text-slate-400" /> Scoring</CardTitle>
+          </CardHeader>
+          <CardBody className="space-y-4">
+            <Toggle
+              label="Negative marking for wrong answers"
+              checked={scoring.negativeMarkingEnabled}
+              onChange={(value) => setScoring({ ...scoring, negativeMarkingEnabled: value })}
+              description="When enabled, an incorrect answer subtracts a percentage of that question’s maximum mark."
+            />
+            <div className={scoring.negativeMarkingEnabled ? '' : 'opacity-50'}>
+              <Input
+                label="Percentage deducted"
+                type="number"
+                min={1}
+                max={100}
+                step={1}
+                value={scoring.negativeMarkingPercentage}
+                disabled={!scoring.negativeMarkingEnabled}
+                onChange={(event) => setScoring({ ...scoring, negativeMarkingPercentage: Number(event.target.value) })}
+                hint={scoring.negativeMarkingEnabled
+                  ? `${scoring.negativeMarkingPercentage || 0}% of the question’s maximum mark will be subtracted.`
+                  : 'Enable negative marking to configure the deduction.'}
+              />
+            </div>
+            <p className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Saving this setting recalculates all existing incorrect answers in this quiz. Correct, half, custom, and unanswered scores are unchanged.
+            </p>
+            <div className="flex items-center gap-2 pt-2">
+              <Button onClick={handleSaveScoring}><Save className="w-4 h-4" /> {saved ? 'Saved!' : 'Save Scoring Settings'}</Button>
             </div>
           </CardBody>
         </Card>

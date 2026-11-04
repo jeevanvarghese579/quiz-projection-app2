@@ -36,6 +36,7 @@ interface QuizContextValue {
   revokeInvigilator: (quizId: string, accessId: string) => void;
   // Projector
   updateProjectorSettings: (quizId: string, settings: Partial<ProjectorSettings>) => void;
+  updateScoringSettings: (quizId: string, negativeMarkingEnabled: boolean, negativeMarkingPercentage: number) => void;
   // Derived
   getRankedTeams: (quiz: Quiz) => ReturnType<typeof getRankedTeams>;
   getTeamTotal: (quiz: Quiz, teamId: string) => number;
@@ -107,6 +108,8 @@ export function QuizProvider({ children }: { children: ReactNode }) {
       scores: [],
       invigilatorAccess: [],
       auditLogs: [],
+      negativeMarkingEnabled: data.negativeMarkingEnabled ?? false,
+      negativeMarkingPercentage: data.negativeMarkingPercentage ?? 25,
       invigilatorLoginEnabled: false,
       createdAt: Date.now(),
       projector: {
@@ -248,7 +251,10 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     updateQuizInState(quizId, (q) => {
       const question = q.questions.find((qu) => qu.id === questionId);
       if (!question) return q;
-      const marks = computeMarks(question, state, customValue);
+      const marks = computeMarks(question, state, customValue, {
+        enabled: q.negativeMarkingEnabled === true,
+        percentage: q.negativeMarkingPercentage ?? 25,
+      });
       const existingIdx = q.scores.findIndex((s) => s.teamId === teamId && s.questionId === questionId);
       const prevEntry = existingIdx >= 0 ? q.scores[existingIdx] : null;
       const newScores = [...q.scores];
@@ -315,6 +321,23 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     updateQuizInState(quizId, (q) => ({ ...q, projector: { ...q.projector, ...settings } }));
   }, [updateQuizInState]);
 
+  const updateScoringSettings = useCallback((quizId: string, negativeMarkingEnabled: boolean, negativeMarkingPercentage: number) => {
+    const percentage = Math.min(100, Math.max(1, negativeMarkingPercentage));
+    updateQuizInState(quizId, (q) => {
+      const questions = new Map(q.questions.map((question) => [question.id, question]));
+      const scores = q.scores.map((score) => {
+        if (score.state !== 'incorrect') return score;
+        const question = questions.get(score.questionId);
+        if (!question) return score;
+        return {
+          ...score,
+          marks: computeMarks(question, 'incorrect', undefined, { enabled: negativeMarkingEnabled, percentage }),
+        };
+      });
+      return { ...q, negativeMarkingEnabled, negativeMarkingPercentage: percentage, scores };
+    });
+  }, [updateQuizInState]);
+
   return (
     <QuizContext.Provider
       value={{
@@ -324,7 +347,7 @@ export function QuizProvider({ children }: { children: ReactNode }) {
         addQuestion, updateQuestion, deleteQuestion, bulkAddQuestions,
         setScore, resetTeamScores,
         addInvigilator, updateInvigilator, revokeInvigilator,
-        updateProjectorSettings,
+        updateProjectorSettings, updateScoringSettings,
         getRankedTeams, getTeamTotal,
       }}
     >
