@@ -1,14 +1,12 @@
 import { Link } from 'react-router-dom';
-import { Trophy, ShieldCheck, KeyRound, ArrowRight, Sparkles, Cloud } from 'lucide-react';
+import { ShieldCheck, KeyRound, ArrowRight, Sparkles, Cloud } from 'lucide-react';
 
 export function LandingPage() {
   return (
     <div className="min-h-screen projector-bg projector-grid flex flex-col">
       <header className="px-6 py-5 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/30">
-            <Trophy className="w-5 h-5 text-white" />
-          </div>
+          <img src="/quiz-projection-icon.png" alt="Quiz Projection App icon" className="w-10 h-10 rounded-xl object-cover shadow-lg shadow-blue-500/30" />
           <span className="font-display font-bold text-white text-lg">Quiz Projection App 2</span>
         </div>
         <Link to="/about" className="text-slate-300 hover:text-white text-sm font-medium transition-colors">About</Link>

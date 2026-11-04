@@ -1,18 +1,23 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Check, X, Minus, LogOut, ShieldCheck, Save, Trophy, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { AlertCircle, LogOut, Save, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { getInvigilatorSessionState, signOutInvigilator, submitInvigilatorScore, type SessionQuiz } from '@/firebase/invigilator';
-import { getScoreEntry, formatMarks, getTeamTotal } from '@/utils/scoring';
+import { formatMarks, getScoreEntry } from '@/utils/scoring';
 import type { ScoreState } from '@/types';
 
-const states: { value: ScoreState; label: string; icon: typeof Check; classes: string }[] = [
-  { value: 'correct', label: 'Correct', icon: Check, classes: 'border-emerald-300 bg-emerald-50 text-emerald-700' },
-  { value: 'half', label: 'Half', icon: Minus, classes: 'border-amber-300 bg-amber-50 text-amber-700' },
-  { value: 'incorrect', label: 'Incorrect', icon: X, classes: 'border-red-300 bg-red-50 text-red-700' },
-  { value: 'unanswered', label: 'Unanswered', icon: Minus, classes: 'border-slate-200 bg-slate-50 text-slate-500' },
+const scoreStates: { value: ScoreState; label: string; symbol: string; symbolClass?: string; activeClass: string }[] = [
+  { value: 'correct', label: 'Correct', symbol: '✓', activeClass: 'border-emerald-600 bg-emerald-600 text-white shadow-sm' },
+  { value: 'half', label: 'Half marks', symbol: '½', symbolClass: 'text-[10px]', activeClass: 'border-amber-500 bg-amber-500 text-white shadow-sm' },
+  { value: 'incorrect', label: 'Incorrect', symbol: '×', activeClass: 'border-red-500 bg-red-500 text-white shadow-sm' },
+  { value: 'unanswered', label: 'Unanswered', symbol: '—', activeClass: 'border-slate-300 bg-slate-200 text-slate-500' },
+];
+
+const questionGradients = [
+  'bg-gradient-to-b from-blue-50 via-white to-cyan-50/70',
+  'bg-gradient-to-b from-violet-50 via-white to-fuchsia-50/60',
+  'bg-gradient-to-b from-emerald-50 via-white to-teal-50/70',
+  'bg-gradient-to-b from-amber-50 via-white to-orange-50/60',
 ];
 
 export function InvigilatorPage() {
@@ -21,8 +26,7 @@ export function InvigilatorPage() {
   const [quiz, setQuiz] = useState<SessionQuiz | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedTeamId, setSelectedTeamId] = useState('');
-  const [custom, setCustom] = useState<Record<string, string>>({});
+  const [customValues, setCustomValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState('');
 
   useEffect(() => {
@@ -50,18 +54,17 @@ export function InvigilatorPage() {
     };
   }, [quizId]);
 
-  const allowedTeams = useMemo(() => quiz?.teams ?? [], [quiz]);
-  const selectedTeam = allowedTeams.find((team) => team.id === (selectedTeamId || allowedTeams[0]?.id));
   const isReadOnly = !quiz || quiz.sessionAccess.readOnly || quiz.status === 'completed' || quiz.status === 'paused' || quiz.status === 'archived';
 
-  const setTeamScore = async (questionId: string, state: ScoreState, customValue?: number) => {
-    if (!selectedTeam || isReadOnly) return;
-    const key = `${selectedTeam.id}-${questionId}`;
+  const setTeamScore = async (teamId: string, questionId: string, state: ScoreState, customValue?: number) => {
+    if (isReadOnly) return;
+    const key = `${teamId}-${questionId}`;
     setSaving(key);
     setError('');
     try {
-      const next = await submitInvigilatorScore({ teamId: selectedTeam.id, questionId, state, customValue });
+      const next = await submitInvigilatorScore({ teamId, questionId, state, customValue });
       setQuiz(next);
+      setCustomValues((previous) => { const updated = { ...previous }; delete updated[key]; return updated; });
     } catch (scoreError) {
       setError(scoreError instanceof Error ? scoreError.message : 'The score could not be saved.');
     } finally {
@@ -79,31 +82,49 @@ export function InvigilatorPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="sticky top-0 z-20 bg-slate-950 text-white shadow-lg">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0"><div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shrink-0"><Trophy className="w-4 h-4" /></div><div className="min-w-0"><p className="font-display font-bold text-sm truncate">{quiz.name}</p><p className="text-xs text-slate-400">{isReadOnly ? 'Read-only view' : 'Secure scoring console'}</p></div></div>
+      <header className="sticky top-0 z-50 bg-slate-950 text-white shadow-lg">
+        <div className="px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0"><img src="/quiz-projection-icon.png" alt="" className="w-9 h-9 rounded-xl object-cover shrink-0 shadow-md" /><div className="min-w-0"><p className="font-display font-bold text-sm truncate">{quiz.name}</p><p className="text-xs text-slate-400">{isReadOnly ? 'Read-only view' : 'Secure scoring console'}</p></div></div>
           <button onClick={() => void exit()} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white"><LogOut className="w-3.5 h-3.5" /> Exit</button>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto p-4 md:p-6">
-        <div className="flex items-center justify-between gap-3 mb-4"><div><h1 className="font-display text-xl font-bold text-slate-900">Enter marks</h1><p className="text-sm text-slate-500">Choose a team, then tap a result for each question.</p></div><Badge variant={isReadOnly ? 'amber' : 'green'}>{isReadOnly ? 'Read only' : 'Can score'}</Badge></div>
+      <main className="p-3 md:p-6">
+        <div className="flex items-center justify-between gap-3 mb-4"><div><h1 className="font-display text-xl font-bold text-slate-900">Enter marks</h1><p className="text-sm text-slate-500">Score every assigned team in the question matrix.</p></div><Badge variant={isReadOnly ? 'amber' : 'green'}>{isReadOnly ? 'Read only' : 'Can score'}</Badge></div>
         {error && <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"><AlertCircle className="h-4 w-4 shrink-0" />{error}</div>}
 
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-5">
-          {allowedTeams.map((team) => { const active = selectedTeam?.id === team.id; return <button key={team.id} onClick={() => setSelectedTeamId(team.id)} className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border whitespace-nowrap text-sm font-medium transition-all ${active ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: team.color }} />{team.name}<span className="text-xs text-slate-400">{formatMarks(getTeamTotal(quiz, team.id))}</span></button>; })}
+        <div className="max-h-[calc(100vh-180px)] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <table className="w-max min-w-full border-separate border-spacing-0">
+            <thead className="sticky top-0 z-30">
+              <tr>
+                <th className="sticky left-0 z-40 w-[170px] min-w-[170px] border-b border-r border-slate-200 bg-slate-100 px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-600 shadow-[4px_0_8px_-6px_rgba(15,23,42,0.6)]">Team</th>
+                {quiz.questions.map((question, questionIndex) => <th key={question.id} className={`min-w-[170px] border-b border-r border-slate-200 px-3 py-3 text-center text-xs font-bold text-slate-700 ${questionGradients[questionIndex % questionGradients.length]}`}>Q{question.number}<span className="block font-normal text-slate-400">{formatMarks(question.maxMarks)} max</span></th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {quiz.teams.map((team, teamIndex) => (
+                <tr key={team.id}>
+                  <td className={`sticky left-0 z-20 w-[170px] min-w-[170px] max-w-[170px] border-b border-r border-slate-200 px-4 py-3 align-middle shadow-[4px_0_8px_-6px_rgba(15,23,42,0.6)] ${teamIndex % 2 ? 'bg-slate-50' : 'bg-white'}`}>
+                    <div className="flex items-start gap-2"><span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: team.color }} /><span className="break-words text-sm font-semibold leading-snug text-slate-800">{team.name}</span></div>
+                  </td>
+                  {quiz.questions.map((question, questionIndex) => {
+                    const entry = getScoreEntry(quiz, team.id, question.id);
+                    const state = entry?.state ?? 'unanswered';
+                    const key = `${team.id}-${question.id}`;
+                    const isSaving = saving === key;
+                    const isCustomizing = customValues[key] !== undefined;
+                    return <td key={question.id} className={`min-w-[170px] border-b border-r border-slate-200 px-3 py-3 text-center ${questionGradients[questionIndex % questionGradients.length]}`}>
+                      {isCustomizing ? <div className="flex items-center justify-center gap-1"><input type="number" min={-question.maxMarks} max={question.maxMarks} step="0.5" value={customValues[key]} disabled={isReadOnly || isSaving} onChange={(event) => setCustomValues((previous) => ({ ...previous, [key]: event.target.value }))} onKeyDown={(event) => event.key === 'Enter' && void setTeamScore(team.id, question.id, 'custom', Number(customValues[key]))} className="w-16 rounded-lg border border-violet-300 bg-white px-2 py-1.5 text-center text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" autoFocus /><button title="Save custom marks" disabled={isReadOnly || isSaving || customValues[key] === ''} onClick={() => void setTeamScore(team.id, question.id, 'custom', Number(customValues[key]))} className="rounded-lg bg-violet-600 p-2 text-white disabled:opacity-40"><Save className="h-3.5 w-3.5" /></button></div> : <div className="flex items-center justify-center gap-1">
+                        {scoreStates.map((item) => <button key={item.value} title={item.label} aria-label={`${item.label} for ${team.name}, question ${question.number}`} disabled={isReadOnly || isSaving} onClick={() => void setTeamScore(team.id, question.id, item.value)} className={`flex h-8 w-8 items-center justify-center rounded-lg border text-sm font-bold transition-all disabled:opacity-40 ${state === item.value ? item.activeClass : 'border-slate-200 bg-white/90 text-slate-400 hover:border-slate-300 hover:bg-white'}`}><span className={item.symbolClass}>{item.symbol}</span></button>)}
+                        <button title="Custom marks" aria-label={`Custom marks for ${team.name}, question ${question.number}`} disabled={isReadOnly || isSaving} onClick={() => setCustomValues((previous) => ({ ...previous, [key]: entry?.marks?.toString() ?? '' }))} className={`flex h-8 min-w-8 items-center justify-center rounded-lg border px-1.5 text-xs font-bold transition-all disabled:opacity-40 ${state === 'custom' ? 'border-violet-600 bg-violet-600 text-white' : 'border-slate-200 bg-white/90 text-slate-400 hover:border-violet-300 hover:text-violet-600'}`}>{state === 'custom' ? formatMarks(entry?.marks ?? null) : '+'}</button>
+                      </div>}
+                    </td>;
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-
-        {selectedTeam && <div className="space-y-3">
-          <div className="flex items-center gap-3 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm"><span className="w-4 h-4 rounded-full" style={{ backgroundColor: selectedTeam.color }} /><div className="flex-1"><p className="font-display font-bold text-slate-900">{selectedTeam.name}</p><p className="text-xs text-slate-400">{selectedTeam.institution}</p></div><div className="text-right"><p className="text-xs text-slate-400">Total</p><p className="text-xl font-display font-bold text-slate-900 tabular-nums">{formatMarks(getTeamTotal(quiz, selectedTeam.id))}</p></div></div>
-          {quiz.questions.map((question) => {
-            const entry = getScoreEntry(quiz, selectedTeam.id, question.id);
-            const key = `${selectedTeam.id}-${question.id}`;
-            const customValue = custom[key] ?? '';
-            const isSaving = saving === key;
-            return <div key={question.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm"><div className="flex items-center justify-between mb-3"><div><p className="font-display font-bold text-slate-900">Question {question.number}</p><p className="text-xs text-slate-400">Maximum {formatMarks(question.maxMarks)} marks</p></div><span className="text-lg font-display font-bold text-slate-700 tabular-nums">{isSaving ? 'Saving…' : formatMarks(entry?.marks ?? null)}</span></div><div className="grid grid-cols-2 sm:grid-cols-4 gap-2">{states.map((item) => { const Icon = item.icon; const active = (entry?.state ?? 'unanswered') === item.value; return <button key={item.value} disabled={isReadOnly || isSaving} onClick={() => void setTeamScore(question.id, item.value)} className={`min-h-12 rounded-xl border flex flex-col items-center justify-center gap-0.5 text-xs font-semibold transition-all disabled:opacity-50 ${active ? `${item.classes} ring-2 ring-offset-1 ring-slate-300` : 'border-slate-200 text-slate-400 hover:bg-slate-50'}`}><Icon className="w-4 h-4" />{item.label}</button>; })}</div><div className="mt-3 flex items-center gap-2"><Input type="number" min={-question.maxMarks} max={question.maxMarks} step="0.5" placeholder="Custom marks" value={customValue} disabled={isReadOnly || isSaving} onChange={(event) => setCustom((previous) => ({ ...previous, [key]: event.target.value }))} /><Button size="sm" variant="outline" disabled={isReadOnly || isSaving || customValue === ''} onClick={() => void setTeamScore(question.id, 'custom', Number(customValue))}><Save className="w-3.5 h-3.5" /> Set custom</Button></div></div>;
-          })}
-        </div>}
       </main>
     </div>
   );

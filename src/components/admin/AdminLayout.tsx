@@ -60,9 +60,7 @@ export function AdminLayout() {
         <div className="h-full flex flex-col">
           <div className="px-5 py-5 border-b border-slate-100 flex items-center justify-between">
             <Link to="/admin" className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-md shadow-blue-500/20">
-                <Trophy className="w-4.5 h-4.5 text-white" />
-              </div>
+              <img src="/quiz-projection-icon.png" alt="" className="w-9 h-9 rounded-xl object-cover shadow-md shadow-blue-500/20" />
               <div>
                 <p className="font-display font-bold text-slate-900 text-sm leading-tight">Quiz Projection</p>
                 <p className="text-xs text-slate-400">App 2</p>

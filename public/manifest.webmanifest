@@ -1,0 +1,23 @@
+{
+  "name": "Quiz Projection App 2",
+  "short_name": "Quiz Projection",
+  "description": "Live quiz scoring and championship leaderboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050914",
+  "theme_color": "#07154f",
+  "icons": [
+    {
+      "src": "/quiz-projection-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/quiz-projection-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
