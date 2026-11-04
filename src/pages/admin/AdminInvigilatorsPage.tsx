@@ -30,7 +30,7 @@ export function AdminInvigilatorsPage() {
       return;
     }
     const duplicateQuizzes = customCode
-      ? quizzes.filter((item) => item.invigilatorAccess.some((access) => access.code.trim().toUpperCase() === customCode))
+      ? quizzes.filter((item) => item.invigilatorAccess.some((access) => !access.revoked && access.code.trim().toUpperCase() === customCode))
       : [];
     if (duplicateQuizzes.length > 0) {
       const quizNames = duplicateQuizzes.map((item) => `“${item.name}”`).join(', ');

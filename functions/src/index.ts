@@ -118,7 +118,7 @@ async function findLegacyCode(code: string): Promise<{ ownerUid: string; quizId:
       const ownerUid = ownerRefs[offset + index].id;
       for (const quiz of asQuizzes(snapshots[index].data())) {
         for (const access of quiz.invigilatorAccess || []) {
-          if (normalizeCode(access.code) === code) matches.push({ ownerUid, quizId: quiz.id, accessId: access.id });
+          if (!access.revoked && normalizeCode(access.code) === code) matches.push({ ownerUid, quizId: quiz.id, accessId: access.id });
         }
       }
     }
