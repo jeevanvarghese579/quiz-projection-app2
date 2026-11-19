@@ -20,7 +20,7 @@ export interface AutoScrollStep {
 }
 
 const AUTO_SCROLL_DOWN_PIXELS_PER_SECOND = 28;
-const AUTO_SCROLL_UP_PIXELS_PER_SECOND = 360;
+const AUTO_SCROLL_UP_PIXELS_PER_SECOND = 1200;
 
 export function calculateOverflowAutoScrollStep(
   scrollTop: number,

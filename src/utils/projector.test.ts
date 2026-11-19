@@ -47,7 +47,7 @@ describe('calculateOverflowAutoScrollStep', () => {
     const down = calculateOverflowAutoScrollStep(100, 500, 100, 'down');
     const up = calculateOverflowAutoScrollStep(400, 500, 100, 'up');
     expect(down.scrollTop - 100).toBeCloseTo(2.8);
-    expect(400 - up.scrollTop).toBeCloseTo(36);
+    expect(400 - up.scrollTop).toBeCloseTo(120);
   });
 
   it('reverses direction at the bottom and top boundaries', () => {

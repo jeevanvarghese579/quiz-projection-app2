@@ -107,11 +107,21 @@ export function ProjectorPage() {
     if (!panel || viewMode !== 'standings' || quiz?.projector.autoScrollOverflow !== true || prefersReducedMotion || overflow.length === 0) return;
     let frame = 0;
     let lastFrameTime = performance.now();
+    let logicalScrollTop = panel.scrollTop;
+    let lastAppliedScrollTop = panel.scrollTop;
     let direction: AutoScrollDirection = panel.scrollTop >= panel.scrollHeight - panel.clientHeight - 1 ? 'up' : 'down';
     const animate = (frameTime: number) => {
       const maxScroll = Math.max(0, panel.scrollHeight - panel.clientHeight);
-      const step = calculateOverflowAutoScrollStep(panel.scrollTop, maxScroll, frameTime - lastFrameTime, direction);
+      const renderedScrollTop = panel.scrollTop;
+      if (Math.abs(renderedScrollTop - lastAppliedScrollTop) > 1) {
+        logicalScrollTop = renderedScrollTop;
+        if (renderedScrollTop >= maxScroll - 1) direction = 'up';
+        else if (renderedScrollTop <= 1) direction = 'down';
+      }
+      const step = calculateOverflowAutoScrollStep(logicalScrollTop, maxScroll, frameTime - lastFrameTime, direction);
+      logicalScrollTop = step.scrollTop;
       panel.scrollTop = step.scrollTop;
+      lastAppliedScrollTop = panel.scrollTop;
       direction = step.direction;
       lastFrameTime = frameTime;
       frame = window.requestAnimationFrame(animate);
