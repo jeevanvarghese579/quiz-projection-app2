@@ -23,6 +23,8 @@ export function AdminTeamsPage() {
   const [editingTeam, setEditingTeam] = useState<string | null>(null);
   const [editingMember, setEditingMember] = useState<{ teamId: string; memberId: string } | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const [selectedTeamIds, setSelectedTeamIds] = useState<Set<string>>(() => new Set());
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [importPreview, setImportPreview] = useState<{ team_name: string; team_color: string; student_name: string; student_id: string; class: string; institution: string }[] | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -116,6 +118,38 @@ Team Beta,#10B981,Student Three,103,12B,School B`;
     URL.revokeObjectURL(url);
   };
 
+  const toggleTeamSelection = (teamId: string) => {
+    setSelectedTeamIds((current) => {
+      const next = new Set(current);
+      if (next.has(teamId)) next.delete(teamId);
+      else next.add(teamId);
+      return next;
+    });
+  };
+
+  const toggleAllTeams = () => {
+    setSelectedTeamIds((current) => current.size === quiz.teams.length
+      ? new Set()
+      : new Set(quiz.teams.map((team) => team.id)));
+  };
+
+  const deleteSelectedTeams = () => {
+    selectedTeamIds.forEach((teamId) => deleteTeam(quiz.id, teamId));
+    setSelectedTeamIds(new Set());
+    setExpandedTeam(null);
+    setShowBulkDelete(false);
+  };
+
+  const deleteOneTeam = (teamId: string) => {
+    deleteTeam(quiz.id, teamId);
+    setSelectedTeamIds((current) => {
+      const next = new Set(current);
+      next.delete(teamId);
+      return next;
+    });
+    if (expandedTeam === teamId) setExpandedTeam(null);
+  };
+
   return (
     <div className="animate-fade-in">
       <PageHeader
@@ -142,12 +176,37 @@ Team Beta,#10B981,Student Three,103,12B,School B`;
         </Card>
       ) : (
         <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+              <input
+                type="checkbox"
+                checked={selectedTeamIds.size === quiz.teams.length}
+                onChange={toggleAllTeams}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              Select all teams
+            </label>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-slate-500">{selectedTeamIds.size} selected</span>
+              <Button variant="danger" size="sm" disabled={selectedTeamIds.size === 0} onClick={() => setShowBulkDelete(true)}>
+                <Trash2 className="h-4 w-4" /> Delete selected
+              </Button>
+            </div>
+          </div>
           {quiz.teams.map((team) => (
-            <Card key={team.id} className="overflow-hidden">
+            <Card key={team.id} className={`overflow-hidden ${selectedTeamIds.has(team.id) ? 'ring-2 ring-blue-500' : ''}`}>
               <div
                 className="flex items-center gap-3 p-4 cursor-pointer hover:bg-slate-50 transition-colors"
                 onClick={() => setExpandedTeam(expandedTeam === team.id ? null : team.id)}
               >
+                <input
+                  type="checkbox"
+                  checked={selectedTeamIds.has(team.id)}
+                  onChange={() => toggleTeamSelection(team.id)}
+                  onClick={(event) => event.stopPropagation()}
+                  aria-label={`Select ${team.name}`}
+                  className="h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
                 <div className="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center text-white font-display font-bold" style={{ backgroundColor: team.color }}>
                   {team.name.charAt(0).toUpperCase()}
                 </div>
@@ -164,7 +223,7 @@ Team Beta,#10B981,Student Three,103,12B,School B`;
                     <h4 className="text-sm font-semibold text-slate-700">Team Members</h4>
                     <div className="flex items-center gap-1">
                       <button onClick={() => { setTeamEditForm({ name: team.name, color: team.color, institution: team.institution ?? '' }); setEditingTeam(team.id); }} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"><Edit3 className="w-4 h-4" /></button>
-                      <button onClick={() => { if (confirm(`Delete ${team.name}?`)) deleteTeam(quiz.id, team.id); }} className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => { if (confirm(`Delete ${team.name}?`)) deleteOneTeam(team.id); }} className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
                   {team.members.length === 0 ? (
@@ -239,6 +298,16 @@ Team Beta,#10B981,Student Three,103,12B,School B`;
           <Input label="Class" value={memberEditForm.className} onChange={(e) => setMemberEditForm({ ...memberEditForm, className: e.target.value })} />
           <Input label="Institution" value={memberEditForm.institution} onChange={(e) => setMemberEditForm({ ...memberEditForm, institution: e.target.value })} />
           <div className="flex justify-end gap-2 pt-2"><Button variant="outline" onClick={() => setEditingMember(null)}>Cancel</Button><Button onClick={() => { if (editingMember) updateMember(quiz.id, editingMember.teamId, editingMember.memberId, memberEditForm); setEditingMember(null); }}>Save</Button></div>
+        </div>
+      </Modal>
+
+      <Modal open={showBulkDelete} onClose={() => setShowBulkDelete(false)} title="Delete Selected Teams" size="sm">
+        <p className="mb-5 text-sm text-slate-600">
+          Delete {selectedTeamIds.size} selected {selectedTeamIds.size === 1 ? 'team' : 'teams'}? Their members and all related scores will also be removed. This cannot be undone.
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setShowBulkDelete(false)}>Cancel</Button>
+          <Button variant="danger" onClick={deleteSelectedTeams}><Trash2 className="h-4 w-4" /> Delete {selectedTeamIds.size}</Button>
         </div>
       </Modal>
 

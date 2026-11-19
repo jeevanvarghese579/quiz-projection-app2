@@ -15,6 +15,8 @@ export function AdminQuestionsPage() {
   const [showBulk, setShowBulk] = useState(false);
   const [bulkMarks, setBulkMarks] = useState('1,2,3,5,5,10');
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(() => new Set());
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [confirmMarksChange, setConfirmMarksChange] = useState<{ questionId: string; newMarks: number } | null>(null);
 
   if (!quiz) return <p>Quiz not found.</p>;
@@ -43,6 +45,37 @@ export function AdminQuestionsPage() {
     }
   };
 
+  const toggleQuestionSelection = (questionId: string) => {
+    setSelectedQuestionIds((current) => {
+      const next = new Set(current);
+      if (next.has(questionId)) next.delete(questionId);
+      else next.add(questionId);
+      return next;
+    });
+  };
+
+  const toggleAllQuestions = () => {
+    setSelectedQuestionIds((current) => current.size === quiz.questions.length
+      ? new Set()
+      : new Set(quiz.questions.map((question) => question.id)));
+  };
+
+  const deleteSelectedQuestions = () => {
+    selectedQuestionIds.forEach((questionId) => deleteQuestion(quiz.id, questionId));
+    setSelectedQuestionIds(new Set());
+    setShowBulkDelete(false);
+  };
+
+  const deleteOneQuestion = (questionId: string) => {
+    deleteQuestion(quiz.id, questionId);
+    setSelectedQuestionIds((current) => {
+      const next = new Set(current);
+      next.delete(questionId);
+      return next;
+    });
+    setConfirmDelete(null);
+  };
+
   return (
     <div className="animate-fade-in">
       <PageHeader
@@ -63,10 +96,34 @@ export function AdminQuestionsPage() {
         </Card>
       ) : (
         <div className="space-y-2">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+              <input
+                type="checkbox"
+                checked={selectedQuestionIds.size === quiz.questions.length}
+                onChange={toggleAllQuestions}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              Select all questions
+            </label>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-slate-500">{selectedQuestionIds.size} selected</span>
+              <Button variant="danger" size="sm" disabled={selectedQuestionIds.size === 0} onClick={() => setShowBulkDelete(true)}>
+                <Trash2 className="h-4 w-4" /> Delete selected
+              </Button>
+            </div>
+          </div>
           {quiz.questions.map((q) => {
             const scoredCount = quiz.scores.filter((s) => s.questionId === q.id).length;
             return (
-              <Card key={q.id} className="p-4 flex items-center gap-3">
+              <Card key={q.id} className={`p-4 flex items-center gap-3 ${selectedQuestionIds.has(q.id) ? 'ring-2 ring-blue-500' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={selectedQuestionIds.has(q.id)}
+                  onChange={() => toggleQuestionSelection(q.id)}
+                  aria-label={`Select question ${q.number}`}
+                  className="h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
                 <GripVertical className="w-4 h-4 text-slate-300" />
                 <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-display font-bold text-sm shrink-0">
                   {q.number}
@@ -127,7 +184,17 @@ export function AdminQuestionsPage() {
         </p>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancel</Button>
-          <Button variant="danger" onClick={() => { if (confirmDelete) deleteQuestion(quiz.id, confirmDelete); setConfirmDelete(null); }}>Delete</Button>
+          <Button variant="danger" onClick={() => { if (confirmDelete) deleteOneQuestion(confirmDelete); }}>Delete</Button>
+        </div>
+      </Modal>
+
+      <Modal open={showBulkDelete} onClose={() => setShowBulkDelete(false)} title="Delete Selected Questions" size="sm">
+        <p className="mb-5 text-sm text-slate-600">
+          Delete {selectedQuestionIds.size} selected {selectedQuestionIds.size === 1 ? 'question' : 'questions'}? All related scores will also be removed. This cannot be undone.
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setShowBulkDelete(false)}>Cancel</Button>
+          <Button variant="danger" onClick={deleteSelectedQuestions}><Trash2 className="h-4 w-4" /> Delete {selectedQuestionIds.size}</Button>
         </div>
       </Modal>
 
