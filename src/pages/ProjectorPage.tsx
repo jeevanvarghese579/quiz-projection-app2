@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { GripHorizontal, Maximize, Minimize, Trophy, Radio, Settings2 } from 'lucide-react';
+import { Grid3X3, GripHorizontal, LayoutList, Maximize, Minimize, Trophy, Radio, Settings2 } from 'lucide-react';
 import { useQuiz } from '@/contexts/QuizContext';
 import { formatMarks, getRankedTeams } from '@/utils/scoring';
-import { calculateProminentTeamCapacity } from '@/utils/projector';
+import { calculateProminentTeamCapacity, calculateThumbnailGrid, type ThumbnailGridLayout } from '@/utils/projector';
 
 const themeClasses: Record<string, string> = {
   midnight: 'projector-bg projector-grid',
@@ -15,10 +15,16 @@ const themeClasses: Record<string, string> = {
 
 const speedMap: Record<string, number> = { instant: 0, fast: 0.28, normal: 0.5, slow: 0.8 };
 const HEIGHT_STORAGE_KEY = 'quizProjectionApp2.projectorHeight';
+const VIEW_MODE_STORAGE_KEY = 'quizProjectionApp2.projectorViewMode';
+type ProjectorViewMode = 'standings' | 'thumbnails';
 
 function initialProjectorHeight(): number {
   const savedHeight = Number(window.localStorage.getItem(HEIGHT_STORAGE_KEY));
   return Number.isFinite(savedHeight) ? Math.max(window.innerHeight, savedHeight) : window.innerHeight;
+}
+
+function initialViewMode(): ProjectorViewMode {
+  return window.localStorage.getItem(VIEW_MODE_STORAGE_KEY) === 'thumbnails' ? 'thumbnails' : 'standings';
 }
 
 export function ProjectorPage() {
@@ -28,7 +34,10 @@ export function ProjectorPage() {
   const [fullScreen, setFullScreen] = useState(false);
   const [screenCapacity, setScreenCapacity] = useState(5);
   const [projectorHeight, setProjectorHeight] = useState(initialProjectorHeight);
+  const [viewMode, setViewMode] = useState<ProjectorViewMode>(initialViewMode);
+  const [thumbnailGrid, setThumbnailGrid] = useState<ThumbnailGridLayout>({ columns: 0, rows: 0, tileSize: 0, gap: 0 });
   const standingsRef = useRef<HTMLElement>(null);
+  const thumbnailGridRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
@@ -42,6 +51,10 @@ export function ProjectorPage() {
   }, [projectorHeight]);
 
   useEffect(() => {
+    window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
+  }, [viewMode]);
+
+  useEffect(() => {
     const keepAtLeastOneScreenHigh = () => setProjectorHeight((height) => Math.max(window.innerHeight, height));
     window.addEventListener('resize', keepAtLeastOneScreenHigh);
     return () => window.removeEventListener('resize', keepAtLeastOneScreenHigh);
@@ -50,6 +63,7 @@ export function ProjectorPage() {
   const ranked = useMemo(() => quiz ? getRankedTeams(quiz) : [], [quiz]);
 
   useEffect(() => {
+    if (viewMode !== 'standings') return;
     const section = standingsRef.current;
     if (!section) return;
     const updateCapacity = () => {
@@ -64,7 +78,25 @@ export function ProjectorPage() {
       observer.disconnect();
       window.removeEventListener('resize', updateCapacity);
     };
-  }, [ranked.length]);
+  }, [ranked.length, viewMode]);
+
+  useEffect(() => {
+    if (viewMode !== 'thumbnails') return;
+    const container = thumbnailGridRef.current;
+    if (!container) return;
+    const updateGrid = () => {
+      const bounds = container.getBoundingClientRect();
+      setThumbnailGrid(calculateThumbnailGrid(bounds.width, bounds.height, ranked.length));
+    };
+    updateGrid();
+    const observer = new ResizeObserver(updateGrid);
+    observer.observe(container);
+    window.addEventListener('resize', updateGrid);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateGrid);
+    };
+  }, [ranked.length, viewMode]);
 
   if (!quiz) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Quiz not found.</div>;
 
@@ -111,10 +143,10 @@ export function ProjectorPage() {
   return (
     <div
       className={`projector-scoreboard text-white ${themeClasses[quiz.projector.theme]} overflow-hidden`}
-      style={{ '--projector-height': `${projectorHeight}px` } as CSSProperties}
+      style={{ '--projector-height': viewMode === 'thumbnails' ? '100vh' : `${projectorHeight}px` } as CSSProperties}
     >
       <div className="projector-scoreboard-content relative p-5 pb-8 md:p-8 md:pb-10 xl:p-10 xl:pb-12 flex flex-col">
-        <header className="flex items-start justify-between gap-4 mb-6 md:mb-8">
+        <header className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row md:mb-8">
           <div className="flex items-center gap-4 min-w-0">
             <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-300 flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
               <Trophy className="w-6 h-6 md:w-7 md:h-7 text-white" />
@@ -125,7 +157,31 @@ export function ProjectorPage() {
               {quiz.projector.institution && <p className="text-slate-500 text-xs mt-1 truncate">{quiz.projector.institution}</p>}
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
+            <div className="flex items-center rounded-xl border border-white/10 bg-black/20 p-1" role="group" aria-label="Projector view mode">
+              <button
+                type="button"
+                aria-pressed={viewMode === 'standings'}
+                aria-label="Standings view"
+                title="Standings view"
+                onClick={() => setViewMode('standings')}
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${viewMode === 'standings' ? 'bg-white/15 text-white shadow-sm' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+              >
+                <LayoutList className="h-4 w-4" />
+                <span className="hidden xl:inline">Standings</span>
+              </button>
+              <button
+                type="button"
+                aria-pressed={viewMode === 'thumbnails'}
+                aria-label="All thumbnails view"
+                title="Show every team as a thumbnail"
+                onClick={() => setViewMode('thumbnails')}
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${viewMode === 'thumbnails' ? 'bg-cyan-400/20 text-cyan-200 shadow-sm' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+              >
+                <Grid3X3 className="h-4 w-4" />
+                <span className="hidden xl:inline">All thumbnails</span>
+              </button>
+            </div>
             <div className="hidden md:flex items-center gap-2 px-3 py-2 rounded-full bg-emerald-400/10 border border-emerald-400/20 text-emerald-300 text-xs font-semibold">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-live" /> LIVE
             </div>
@@ -138,6 +194,7 @@ export function ProjectorPage() {
           </div>
         </header>
 
+        {viewMode === 'standings' ? (
         <main className="flex-1 grid lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.38fr)] gap-5 md:gap-7 min-h-0">
           <section ref={standingsRef} className="min-w-0 flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-3">
@@ -207,13 +264,105 @@ export function ProjectorPage() {
             </div>
           </aside>
         </main>
+        ) : (
+          <main className="flex min-h-0 flex-1 flex-col">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">All teams</p>
+              <p className="text-xs text-slate-500">{ranked.length} teams · one-screen view</p>
+            </div>
+            <div ref={thumbnailGridRef} className="min-h-0 flex-1 overflow-hidden">
+              {ranked.length > 0 ? (
+                <div
+                  className="grid h-full w-full place-content-center"
+                  style={{
+                    gridTemplateColumns: `repeat(${Math.max(1, thumbnailGrid.columns)}, ${Math.max(0, thumbnailGrid.tileSize)}px)`,
+                    gridAutoRows: `${thumbnailGrid.tileSize}px`,
+                    gap: `${thumbnailGrid.gap}px`,
+                    opacity: thumbnailGrid.tileSize > 0 ? 1 : 0,
+                  }}
+                >
+                  <AnimatePresence initial={false}>
+                    {ranked.map((entry) => {
+                      const tileSize = thumbnailGrid.tileSize;
+                      const showName = tileSize >= 44;
+                      const showInstitution = tileSize >= 118;
+                      const avatarSize = Math.max(12, Math.min(54, tileSize * 0.38));
+                      return (
+                        <motion.div
+                          key={entry.team.id}
+                          layout="position"
+                          layoutId={entry.team.id}
+                          initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.9 }}
+                          transition={{ duration, type: 'spring', stiffness: 280, damping: 28 }}
+                          title={`${quiz.projector.showRanks ? `${entry.rank}. ` : ''}${entry.team.name}${quiz.projector.showScores ? ` — ${formatMarks(entry.total)} marks` : ''}`}
+                          className={`relative flex min-h-0 min-w-0 flex-col items-center justify-center overflow-hidden rounded-xl border bg-white/[0.07] text-center backdrop-blur-sm ${entry.rank === 1 ? 'border-amber-300/40 ring-1 ring-amber-300/30' : 'border-white/10'}`}
+                          style={{ padding: `${Math.max(2, Math.min(10, tileSize * 0.07))}px` }}
+                        >
+                          <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: entry.team.color }} />
+                          {quiz.projector.showRanks && (
+                            <span
+                              className={`absolute left-1 top-1 font-display font-extrabold tabular-nums ${entry.rank === 1 ? 'text-amber-300' : 'text-slate-400'}`}
+                              style={{ fontSize: `${Math.max(7, Math.min(14, tileSize * 0.11))}px` }}
+                            >
+                              {entry.rank}
+                            </span>
+                          )}
+                          {quiz.projector.showScores && (
+                            <motion.span
+                              key={`${entry.team.id}-${entry.total}`}
+                              initial={prefersReducedMotion ? false : { color: '#67e8f9' }}
+                              animate={{ color: '#ffffff' }}
+                              transition={{ duration: 0.45 }}
+                              className="absolute right-1 top-1 font-display font-extrabold tabular-nums"
+                              style={{ fontSize: `${Math.max(7, Math.min(15, tileSize * 0.12))}px` }}
+                            >
+                              {formatMarks(entry.total)}
+                            </motion.span>
+                          )}
+                          <div
+                            className="flex shrink-0 items-center justify-center rounded-lg font-display font-extrabold text-white shadow-sm"
+                            style={{
+                              width: `${avatarSize}px`,
+                              height: `${avatarSize}px`,
+                              backgroundColor: entry.team.color,
+                              fontSize: `${Math.max(7, Math.min(20, avatarSize * 0.42))}px`,
+                            }}
+                          >
+                            {entry.team.name.charAt(0)}
+                          </div>
+                          {showName && (
+                            <p
+                              className="mt-1 w-full truncate font-display font-bold leading-tight text-white"
+                              style={{ fontSize: `${Math.max(7, Math.min(15, tileSize * 0.1))}px` }}
+                            >
+                              {entry.team.name}
+                            </p>
+                          )}
+                          {showInstitution && entry.team.institution && (
+                            <p className="mt-0.5 w-full truncate text-slate-400" style={{ fontSize: `${Math.min(10, tileSize * 0.07)}px` }}>
+                              {entry.team.institution}
+                            </p>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                <div className="grid h-full place-items-center rounded-2xl border border-white/10 text-slate-400">Waiting for teams and scores.</div>
+              )}
+            </div>
+          </main>
+        )}
 
         <footer className="pt-5 md:pt-7 flex items-center justify-between text-slate-500 text-xs">
           <span>{quiz.status === 'live' ? 'Scores update automatically' : `Quiz ${quiz.status}`}</span>
           <span className="flex items-center gap-1.5"><Radio className="w-3.5 h-3.5" /> Live scoreboard</span>
         </footer>
 
-        <button
+        {viewMode === 'standings' && <button
           type="button"
           aria-label="Resize score screen height. Use the up and down arrow keys, or press Home to reset."
           title="Drag to extend the score screen · Double-click to reset"
@@ -223,7 +372,7 @@ export function ProjectorPage() {
           className="absolute inset-x-0 bottom-0 hidden h-6 cursor-ns-resize touch-none items-center justify-center border-t border-white/10 bg-black/20 text-slate-500 transition-colors hover:bg-white/10 hover:text-slate-300 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-cyan-400 lg:flex"
         >
           <GripHorizontal className="h-4 w-7" />
-        </button>
+        </button>}
       </div>
     </div>
   );
