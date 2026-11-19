@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Grid3X3, GripHorizontal, LayoutList, Maximize, Minimize, Trophy, Radio, Settings2 } from 'lucide-react';
+import { ArrowDownUp, Grid3X3, GripHorizontal, LayoutList, Maximize, Minimize, Trophy, Radio, Settings2 } from 'lucide-react';
 import { useQuiz } from '@/contexts/QuizContext';
 import { formatMarks, getRankedTeams } from '@/utils/scoring';
-import { calculateProminentTeamCapacity, calculateThumbnailGrid, type ThumbnailGridLayout } from '@/utils/projector';
+import { calculateOverflowAutoScrollStep, calculateProminentTeamCapacity, calculateThumbnailGrid, type AutoScrollDirection, type ThumbnailGridLayout } from '@/utils/projector';
 
 const themeClasses: Record<string, string> = {
   midnight: 'projector-bg projector-grid',
@@ -29,7 +29,7 @@ function initialViewMode(): ProjectorViewMode {
 
 export function ProjectorPage() {
   const { quizId } = useParams();
-  const { quizzes } = useQuiz();
+  const { quizzes, updateProjectorSettings } = useQuiz();
   const quiz = quizzes.find((item) => item.id === quizId);
   const [fullScreen, setFullScreen] = useState(false);
   const [screenCapacity, setScreenCapacity] = useState(5);
@@ -37,6 +37,7 @@ export function ProjectorPage() {
   const [viewMode, setViewMode] = useState<ProjectorViewMode>(initialViewMode);
   const [thumbnailGrid, setThumbnailGrid] = useState<ThumbnailGridLayout>({ columns: 0, rows: 0, tileSize: 0, gap: 0 });
   const standingsRef = useRef<HTMLElement>(null);
+  const overflowPanelRef = useRef<HTMLDivElement>(null);
   const thumbnailGridRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = useReducedMotion();
 
@@ -61,6 +62,9 @@ export function ProjectorPage() {
   }, []);
 
   const ranked = useMemo(() => quiz ? getRankedTeams(quiz) : [], [quiz]);
+  const prominentCount = Math.min(ranked.length, screenCapacity);
+  const prominent = ranked.slice(0, prominentCount);
+  const overflow = ranked.slice(prominentCount);
 
   useEffect(() => {
     if (viewMode !== 'standings') return;
@@ -98,11 +102,26 @@ export function ProjectorPage() {
     };
   }, [ranked.length, viewMode]);
 
+  useEffect(() => {
+    const panel = overflowPanelRef.current;
+    if (!panel || viewMode !== 'standings' || quiz?.projector.autoScrollOverflow !== true || prefersReducedMotion || overflow.length === 0) return;
+    let frame = 0;
+    let lastFrameTime = performance.now();
+    let direction: AutoScrollDirection = panel.scrollTop >= panel.scrollHeight - panel.clientHeight - 1 ? 'up' : 'down';
+    const animate = (frameTime: number) => {
+      const maxScroll = Math.max(0, panel.scrollHeight - panel.clientHeight);
+      const step = calculateOverflowAutoScrollStep(panel.scrollTop, maxScroll, frameTime - lastFrameTime, direction);
+      panel.scrollTop = step.scrollTop;
+      direction = step.direction;
+      lastFrameTime = frameTime;
+      frame = window.requestAnimationFrame(animate);
+    };
+    frame = window.requestAnimationFrame(animate);
+    return () => window.cancelAnimationFrame(frame);
+  }, [overflow.length, prefersReducedMotion, quiz?.projector.autoScrollOverflow, viewMode]);
+
   if (!quiz) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Quiz not found.</div>;
 
-  const prominentCount = Math.min(ranked.length, screenCapacity);
-  const prominent = ranked.slice(0, prominentCount);
-  const overflow = ranked.slice(prominentCount);
   const duration = prefersReducedMotion ? 0 : speedMap[quiz.projector.animationSpeed];
 
   const toggleFullScreen = async () => {
@@ -147,12 +166,12 @@ export function ProjectorPage() {
     >
       <div className="projector-scoreboard-content relative p-5 pb-8 md:p-8 md:pb-10 xl:p-10 xl:pb-12 flex flex-col">
         <header className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row md:mb-8">
-          <div className="flex items-center gap-4 min-w-0">
+          <div className="flex min-w-0 flex-1 items-start gap-4">
             <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-300 flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
               <Trophy className="w-6 h-6 md:w-7 md:h-7 text-white" />
             </div>
-            <div className="min-w-0">
-              <h1 className="font-display font-extrabold text-xl md:text-3xl xl:text-4xl tracking-tight truncate">{quiz.projector.title}</h1>
+            <div className="min-w-0 flex-1">
+              <h1 className="whitespace-normal break-words font-display text-xl font-extrabold leading-tight tracking-tight md:text-3xl xl:text-4xl">{quiz.projector.title}</h1>
               <p className="text-slate-300 text-xs md:text-sm mt-1 tracking-[0.18em] uppercase truncate">{quiz.projector.subtitle}</p>
               {quiz.projector.institution && <p className="text-slate-500 text-xs mt-1 truncate">{quiz.projector.institution}</p>}
             </div>
@@ -242,14 +261,30 @@ export function ProjectorPage() {
           </section>
 
           <aside className="rounded-2xl border border-white/10 bg-black/20 overflow-hidden flex flex-col min-h-0">
-            <div className="px-4 md:px-5 py-4 border-b border-white/10 flex items-center justify-between">
+            <div className="px-4 md:px-5 py-4 border-b border-white/10 flex items-center justify-between gap-3">
               <div>
                 <p className="font-display font-bold text-sm md:text-base">Remaining teams</p>
                 <p className="text-xs text-slate-500 mt-0.5">Full standings</p>
               </div>
-              <span className="text-xs font-semibold text-slate-500">{overflow.length}</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={quiz.projector.autoScrollOverflow === true}
+                  aria-label="Auto-scroll remaining teams"
+                  disabled={overflow.length === 0 || Boolean(prefersReducedMotion)}
+                  title={prefersReducedMotion ? 'Auto-scroll is paused because reduced motion is enabled' : 'Toggle automatic scrolling for remaining teams'}
+                  onClick={() => updateProjectorSettings(quiz.id, { autoScrollOverflow: !quiz.projector.autoScrollOverflow })}
+                  className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${quiz.projector.autoScrollOverflow ? 'border-cyan-300/25 bg-cyan-300/10 text-cyan-200' : 'border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}
+                >
+                  <ArrowDownUp className="h-3.5 w-3.5" />
+                  <span className="hidden xl:inline">Auto-scroll</span>
+                  <span className={`h-1.5 w-1.5 rounded-full ${quiz.projector.autoScrollOverflow ? 'bg-cyan-300' : 'bg-slate-600'}`} />
+                </button>
+                <span className="text-xs font-semibold text-slate-500">{overflow.length}</span>
+              </div>
             </div>
-            <div className="overflow-y-auto flex-1 p-2.5 md:p-3 space-y-1.5">
+            <div ref={overflowPanelRef} className="overflow-y-auto flex-1 p-2.5 md:p-3 space-y-1.5">
               <AnimatePresence initial={false}>
                 {overflow.map((entry) => (
                   <motion.div key={entry.team.id} layout="position" layoutId={entry.team.id} animate={{ opacity: 1 }} transition={{ duration, type: 'spring', stiffness: 280, damping: 28 }} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateProminentTeamCapacity, calculateThumbnailGrid } from './projector';
+import { calculateOverflowAutoScrollStep, calculateProminentTeamCapacity, calculateThumbnailGrid } from './projector';
 
 describe('calculateProminentTeamCapacity', () => {
   it('fills a full-HD main panel with the rows that fit', () => {
@@ -39,5 +39,23 @@ describe('calculateThumbnailGrid', () => {
 
   it('returns an empty layout when there are no teams', () => {
     expect(calculateThumbnailGrid(1280, 700, 0)).toEqual({ columns: 0, rows: 0, tileSize: 0, gap: 0 });
+  });
+});
+
+describe('calculateOverflowAutoScrollStep', () => {
+  it('scrolls down slowly and returns upward much faster', () => {
+    const down = calculateOverflowAutoScrollStep(100, 500, 100, 'down');
+    const up = calculateOverflowAutoScrollStep(400, 500, 100, 'up');
+    expect(down.scrollTop - 100).toBeCloseTo(2.8);
+    expect(400 - up.scrollTop).toBeCloseTo(36);
+  });
+
+  it('reverses direction at the bottom and top boundaries', () => {
+    expect(calculateOverflowAutoScrollStep(499, 500, 100, 'down')).toEqual({ scrollTop: 500, direction: 'up' });
+    expect(calculateOverflowAutoScrollStep(10, 500, 100, 'up')).toEqual({ scrollTop: 0, direction: 'down' });
+  });
+
+  it('stays at the top when the panel has no overflow', () => {
+    expect(calculateOverflowAutoScrollStep(20, 0, 100, 'up')).toEqual({ scrollTop: 0, direction: 'down' });
   });
 });

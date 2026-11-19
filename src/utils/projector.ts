@@ -12,6 +12,36 @@ export interface ThumbnailGridLayout {
   gap: number;
 }
 
+export type AutoScrollDirection = 'down' | 'up';
+
+export interface AutoScrollStep {
+  scrollTop: number;
+  direction: AutoScrollDirection;
+}
+
+const AUTO_SCROLL_DOWN_PIXELS_PER_SECOND = 28;
+const AUTO_SCROLL_UP_PIXELS_PER_SECOND = 360;
+
+export function calculateOverflowAutoScrollStep(
+  scrollTop: number,
+  maxScroll: number,
+  elapsedMs: number,
+  direction: AutoScrollDirection,
+): AutoScrollStep {
+  if (maxScroll <= 0) return { scrollTop: 0, direction: 'down' };
+  const elapsedSeconds = Math.min(100, Math.max(0, elapsedMs)) / 1000;
+  if (direction === 'down') {
+    const next = scrollTop + AUTO_SCROLL_DOWN_PIXELS_PER_SECOND * elapsedSeconds;
+    return next >= maxScroll
+      ? { scrollTop: maxScroll, direction: 'up' }
+      : { scrollTop: next, direction };
+  }
+  const next = scrollTop - AUTO_SCROLL_UP_PIXELS_PER_SECOND * elapsedSeconds;
+  return next <= 0
+    ? { scrollTop: 0, direction: 'down' }
+    : { scrollTop: next, direction };
+}
+
 function calculateGridWithGap(availableWidth: number, availableHeight: number, teamCount: number, gap: number): ThumbnailGridLayout {
   let best: ThumbnailGridLayout = { columns: 0, rows: 0, tileSize: 0, gap };
   for (let columns = 1; columns <= teamCount; columns += 1) {
