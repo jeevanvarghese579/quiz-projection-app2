@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -82,6 +82,62 @@
 .projector-scoreboard,
 .projector-scoreboard-content {
   min-height: 100vh;
+}
+
+.projector-scoreboard {
+  font-family: 'Atkinson Hyperlegible', 'Inter', system-ui, sans-serif;
+}
+
+.projector-scoreboard .font-display {
+  font-family: 'Atkinson Hyperlegible', 'Inter', system-ui, sans-serif;
+}
+
+.projector-light {
+  color: #0f172a;
+  background:
+    radial-gradient(ellipse at top left, rgba(14, 165, 233, 0.09), transparent 42%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.projector-light .projector-team-card {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.projector-light .text-white,
+.projector-light .text-slate-200,
+.projector-light .text-slate-300 {
+  color: #0f172a;
+}
+
+.projector-light .projector-team-avatar,
+.projector-light .projector-inverse {
+  color: #ffffff;
+}
+
+.projector-light .text-slate-400 {
+  color: #475569;
+}
+
+.projector-light .text-slate-500 {
+  color: #64748b;
+}
+
+.projector-light [class*="border-white/"] {
+  border-color: rgba(100, 116, 139, 0.28);
+}
+
+.projector-light [class*="bg-black/"] {
+  background-color: rgba(255, 255, 255, 0.78);
+}
+
+.projector-light [class*="bg-white/"]:not(.projector-team-card) {
+  background-color: rgba(15, 23, 42, 0.07);
+}
+
+.projector-light ::-webkit-scrollbar-thumb {
+  background: #94a3b8;
 }
 
 @media (min-width: 1024px) {

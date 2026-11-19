@@ -11,6 +11,7 @@ const themeClasses: Record<string, string> = {
   royal: 'bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950',
   emerald: 'bg-gradient-to-br from-slate-950 via-emerald-950 to-slate-950',
   sunset: 'bg-gradient-to-br from-slate-950 via-orange-950 to-slate-950',
+  white: 'projector-light',
 };
 
 const speedMap: Record<string, number> = { instant: 0, fast: 0.28, normal: 0.5, slow: 0.8 };
@@ -178,7 +179,7 @@ export function ProjectorPage() {
         <header className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row md:mb-8">
           <div className="flex min-w-0 flex-1 items-start gap-4">
             <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-300 flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
-              <Trophy className="w-6 h-6 md:w-7 md:h-7 text-white" />
+              <Trophy className="projector-inverse w-6 h-6 md:w-7 md:h-7 text-white" />
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="whitespace-normal break-words font-display text-xl font-extrabold leading-tight tracking-tight md:text-3xl xl:text-4xl">{quiz.projector.title}</h1>
@@ -224,7 +225,7 @@ export function ProjectorPage() {
         </header>
 
         {viewMode === 'standings' ? (
-        <main className="flex-1 grid lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.38fr)] gap-5 md:gap-7 min-h-0">
+        <main className="grid min-h-0 flex-1 gap-5 md:gap-7 lg:grid-cols-2">
           <section ref={standingsRef} className="min-w-0 flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Championship standings</p>
@@ -241,7 +242,7 @@ export function ProjectorPage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.96 }}
                     transition={{ duration, type: 'spring', stiffness: 280, damping: 28 }}
-                    className={`relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.065] backdrop-blur-sm ${entry.rank === 1 ? 'ring-1 ring-amber-300/40 shadow-xl shadow-amber-950/20' : ''}`}
+                    className={`projector-team-card relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.065] backdrop-blur-sm ${entry.rank === 1 ? 'ring-1 ring-amber-300/40 shadow-xl shadow-amber-950/20' : ''}`}
                   >
                     <div className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: entry.team.color }} />
                     <div className="flex items-center gap-4 md:gap-6 px-4 md:px-6 py-3.5 md:py-4">
@@ -250,7 +251,7 @@ export function ProjectorPage() {
                           {entry.rank}
                         </div>
                       )}
-                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-white font-display font-extrabold text-lg md:text-xl shrink-0" style={{ backgroundColor: entry.team.color }}>
+                      <div className="projector-team-avatar w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-white font-display font-extrabold text-lg md:text-xl shrink-0" style={{ backgroundColor: entry.team.color }}>
                         {entry.team.name.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -258,7 +259,7 @@ export function ProjectorPage() {
                         <p className="text-slate-400 text-xs md:text-sm truncate">{entry.team.institution}</p>
                       </div>
                       {quiz.projector.showScores && (
-                        <motion.div key={`${entry.team.id}-${entry.total}`} initial={prefersReducedMotion ? false : { scale: 1.18, color: '#67e8f9' }} animate={{ scale: 1, color: '#ffffff' }} transition={{ duration: 0.45 }} className={`font-display font-extrabold tabular-nums ${entry.rank === 1 ? 'text-2xl md:text-4xl' : 'text-xl md:text-3xl'}`}>
+                        <motion.div key={`${entry.team.id}-${entry.total}`} initial={prefersReducedMotion ? false : { scale: 1.18, color: '#67e8f9' }} animate={{ scale: 1, color: quiz.projector.theme === 'white' ? '#0f172a' : '#ffffff' }} transition={{ duration: 0.45 }} className={`font-display font-extrabold tabular-nums ${entry.rank === 1 ? 'text-2xl md:text-4xl' : 'text-xl md:text-3xl'}`}>
                           {formatMarks(entry.total)}
                         </motion.div>
                       )}
@@ -270,11 +271,10 @@ export function ProjectorPage() {
             </div>
           </section>
 
-          <aside className="rounded-2xl border border-white/10 bg-black/20 overflow-hidden flex flex-col min-h-0">
-            <div className="px-4 md:px-5 py-4 border-b border-white/10 flex items-center justify-between gap-3">
+          <aside className="flex min-h-0 min-w-0 flex-col">
+            <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <p className="font-display font-bold text-sm md:text-base">Remaining teams</p>
-                <p className="text-xs text-slate-500 mt-0.5">Full standings</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Remaining standings</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -294,14 +294,39 @@ export function ProjectorPage() {
                 <span className="text-xs font-semibold text-slate-500">{overflow.length}</span>
               </div>
             </div>
-            <div ref={overflowPanelRef} className="overflow-y-auto flex-1 p-2.5 md:p-3 space-y-1.5">
+            <div ref={overflowPanelRef} className="flex-1 space-y-2.5 overflow-y-auto pr-1 md:space-y-3">
               <AnimatePresence initial={false}>
                 {overflow.map((entry) => (
-                  <motion.div key={entry.team.id} layout="position" layoutId={entry.team.id} animate={{ opacity: 1 }} transition={{ duration, type: 'spring', stiffness: 280, damping: 28 }} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors">
-                    <span className="w-6 text-center text-xs font-bold text-slate-500 tabular-nums">{entry.rank}</span>
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.team.color }} />
-                    <span className="text-sm text-slate-300 truncate flex-1">{entry.team.name}</span>
-                    {quiz.projector.showScores && <span className="text-sm font-bold tabular-nums text-white">{formatMarks(entry.total)}</span>}
+                  <motion.div
+                    key={entry.team.id}
+                    layout="position"
+                    layoutId={entry.team.id}
+                    initial={prefersReducedMotion ? false : { opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.96 }}
+                    transition={{ duration, type: 'spring', stiffness: 280, damping: 28 }}
+                    className={`projector-team-card relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.065] backdrop-blur-sm ${entry.rank === 1 ? 'ring-1 ring-amber-300/40 shadow-xl shadow-amber-950/20' : ''}`}
+                  >
+                    <div className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: entry.team.color }} />
+                    <div className="flex items-center gap-4 px-4 py-3.5 md:gap-6 md:px-6 md:py-4">
+                      {quiz.projector.showRanks && (
+                        <div className={`w-10 text-center font-display font-extrabold tabular-nums md:w-14 ${entry.rank === 1 ? 'text-2xl text-amber-300 md:text-3xl' : entry.rank === 2 ? 'text-xl text-slate-200 md:text-2xl' : entry.rank === 3 ? 'text-xl text-orange-300 md:text-2xl' : 'text-lg text-slate-500 md:text-xl'}`}>
+                          {entry.rank}
+                        </div>
+                      )}
+                      <div className="projector-team-avatar flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-display text-lg font-extrabold text-white md:h-12 md:w-12 md:text-xl" style={{ backgroundColor: entry.team.color }}>
+                        {entry.team.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className={`truncate font-display font-bold ${entry.rank === 1 ? 'text-lg md:text-2xl' : 'text-base md:text-xl'}`}>{entry.team.name}</p>
+                        <p className="truncate text-xs text-slate-400 md:text-sm">{entry.team.institution}</p>
+                      </div>
+                      {quiz.projector.showScores && (
+                        <motion.div key={`${entry.team.id}-${entry.total}`} initial={prefersReducedMotion ? false : { scale: 1.18, color: '#67e8f9' }} animate={{ scale: 1, color: quiz.projector.theme === 'white' ? '#0f172a' : '#ffffff' }} transition={{ duration: 0.45 }} className={`font-display font-extrabold tabular-nums ${entry.rank === 1 ? 'text-2xl md:text-4xl' : 'text-xl md:text-3xl'}`}>
+                          {formatMarks(entry.total)}
+                        </motion.div>
+                      )}
+                    </div>
                   </motion.div>
                 ))}
               </AnimatePresence>
@@ -358,7 +383,7 @@ export function ProjectorPage() {
                             <motion.span
                               key={`${entry.team.id}-${entry.total}`}
                               initial={prefersReducedMotion ? false : { color: '#67e8f9' }}
-                              animate={{ color: '#ffffff' }}
+                              animate={{ color: quiz.projector.theme === 'white' ? '#0f172a' : '#ffffff' }}
                               transition={{ duration: 0.45 }}
                               className="absolute right-1 top-1 font-display font-extrabold tabular-nums"
                               style={{ fontSize: `${Math.max(7, Math.min(15, tileSize * 0.12))}px` }}
@@ -367,7 +392,7 @@ export function ProjectorPage() {
                             </motion.span>
                           )}
                           <div
-                            className="flex shrink-0 items-center justify-center rounded-lg font-display font-extrabold text-white shadow-sm"
+                            className="projector-team-avatar flex shrink-0 items-center justify-center rounded-lg font-display font-extrabold text-white shadow-sm"
                             style={{
                               width: `${avatarSize}px`,
                               height: `${avatarSize}px`,

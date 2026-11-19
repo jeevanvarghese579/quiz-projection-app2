@@ -69,7 +69,7 @@ export interface ProjectorSettings {
   showRanks: boolean;
   showScores: boolean;
   autoScrollOverflow: boolean;
-  theme: 'midnight' | 'royal' | 'emerald' | 'sunset';
+  theme: 'midnight' | 'royal' | 'emerald' | 'sunset' | 'white';
 }
 
 export interface Quiz {

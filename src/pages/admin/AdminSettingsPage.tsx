@@ -131,6 +131,7 @@ export function AdminSettingsPage() {
                 <option value="royal">Royal Indigo</option>
                 <option value="emerald">Emerald Dark</option>
                 <option value="sunset">Sunset Gold</option>
+                <option value="white">Clean White</option>
               </Select>
               <Select label="Animation Speed" value={projector.animationSpeed} onChange={(e) => setProjector({ ...projector, animationSpeed: e.target.value as typeof projector.animationSpeed })}>
                 <option value="instant">Instant</option>
