@@ -255,11 +255,11 @@ export function ProjectorPage() {
                         {entry.team.name.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`font-display font-bold truncate ${entry.rank === 1 ? 'text-lg md:text-2xl' : 'text-base md:text-xl'}`}>{entry.team.name}</p>
-                        <p className="text-slate-400 text-xs md:text-sm truncate">{entry.team.institution}</p>
+                        <p className="truncate font-display text-xl font-bold leading-none md:text-3xl xl:text-4xl">{entry.team.name}</p>
+                        <p className="mt-1 truncate text-xs text-slate-400 md:text-sm">{entry.team.institution}</p>
                       </div>
                       {quiz.projector.showScores && (
-                        <motion.div key={`${entry.team.id}-${entry.total}`} initial={prefersReducedMotion ? false : { scale: 1.18, color: '#67e8f9' }} animate={{ scale: 1, color: quiz.projector.theme === 'white' ? '#0f172a' : '#ffffff' }} transition={{ duration: 0.45 }} className={`font-display font-extrabold tabular-nums ${entry.rank === 1 ? 'text-2xl md:text-4xl' : 'text-xl md:text-3xl'}`}>
+                        <motion.div key={`${entry.team.id}-${entry.total}`} initial={prefersReducedMotion ? false : { scale: 1.18, color: '#67e8f9' }} animate={{ scale: 1, color: quiz.projector.theme === 'white' ? '#0f172a' : '#ffffff' }} transition={{ duration: 0.45 }} className="shrink-0 font-display text-3xl font-extrabold leading-none tabular-nums md:text-5xl">
                           {formatMarks(entry.total)}
                         </motion.div>
                       )}
@@ -318,11 +318,11 @@ export function ProjectorPage() {
                         {entry.team.name.charAt(0)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className={`truncate font-display font-bold ${entry.rank === 1 ? 'text-lg md:text-2xl' : 'text-base md:text-xl'}`}>{entry.team.name}</p>
-                        <p className="truncate text-xs text-slate-400 md:text-sm">{entry.team.institution}</p>
+                        <p className="truncate font-display text-xl font-bold leading-none md:text-3xl xl:text-4xl">{entry.team.name}</p>
+                        <p className="mt-1 truncate text-xs text-slate-400 md:text-sm">{entry.team.institution}</p>
                       </div>
                       {quiz.projector.showScores && (
-                        <motion.div key={`${entry.team.id}-${entry.total}`} initial={prefersReducedMotion ? false : { scale: 1.18, color: '#67e8f9' }} animate={{ scale: 1, color: quiz.projector.theme === 'white' ? '#0f172a' : '#ffffff' }} transition={{ duration: 0.45 }} className={`font-display font-extrabold tabular-nums ${entry.rank === 1 ? 'text-2xl md:text-4xl' : 'text-xl md:text-3xl'}`}>
+                        <motion.div key={`${entry.team.id}-${entry.total}`} initial={prefersReducedMotion ? false : { scale: 1.18, color: '#67e8f9' }} animate={{ scale: 1, color: quiz.projector.theme === 'white' ? '#0f172a' : '#ffffff' }} transition={{ duration: 0.45 }} className="shrink-0 font-display text-3xl font-extrabold leading-none tabular-nums md:text-5xl">
                           {formatMarks(entry.total)}
                         </motion.div>
                       )}
