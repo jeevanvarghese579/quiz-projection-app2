@@ -92,6 +92,12 @@
   font-family: 'Atkinson Hyperlegible', 'Inter', system-ui, sans-serif;
 }
 
+.projector-scoreboard .tabular-nums {
+  font-family: 'Inter', Arial, Helvetica, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
 .projector-light {
   color: #0f172a;
   background:
